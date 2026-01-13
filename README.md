@@ -1,4 +1,4 @@
-# Estudio del lenguaje Rust
+# Rust: Aprendizaje de conceptos fundamentales y avanzados 
 
 Repositorio de aprendizaje y referencia sobre conceptos fundamentales y avanzados de Rust. Cada módulo en `src/estudios/` contiene explicaciones detalladas, ejemplos ejecutables y tests que demuestran características específicas del lenguaje.
 
