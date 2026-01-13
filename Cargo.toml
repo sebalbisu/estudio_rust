@@ -1,10 +1,10 @@
 [package]
-name = "estudio-rust"
+name = "rust_concepts"
 version = "0.1.0"
 edition = "2024"
 
 [lib]
-name = "estudio_rust"
+name = "rust_concepts"
 path = "src/lib.rs"
 
 [dependencies]
