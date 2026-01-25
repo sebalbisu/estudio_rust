@@ -1,136 +1,136 @@
 // ============================================================================
-// MANEJO DE ERRORES EN RUST
+// ERROR HANDLING IN RUST
 // ============================================================================
 
 #[test]
-fn indice() {
-    fundamentos::sin_source();
-    fundamentos::con_source();
+fn index() {
+    fundamentals::without_source();
+    fundamentals::with_source();
     impl_err::enum_err();
     impl_err::struct_err();
     impl_err::string_err();
     box_dyn_error::dyn_err();
     string_err::string_as_boxed_error();
-    conversion_propagacion::demo_question_operator();
+    conversion_propagation::demo_question_operator();
     this_error::this_error_demo();
     anyhow::anyhow_demo();
     backtrace::manual();
 }
 
 // ============================================================================
-// 1. FUNDAMENTOS: TRAIT ERROR
+// 1. FUNDAMENTALS: ERROR TRAIT
 // ============================================================================
 /*
-    TRAIT ERROR EN RUST:
+    ERROR TRAIT IN RUST:
     --------------------------------------------
 
-    * Para implementar Error necesitas:
-        * #[derive(Debug)]           // Obligatorio (trait bound)
-        * impl Display for MyError   // Obligatorio (trait bound)
-        * impl Error for MyError     // Puede estar vacío si no hay source
+    * To implement Error you need:
+        * #[derive(Debug)]           // Mandatory (trait bound)
+        * impl Display for MyError   // Mandatory (trait bound)
+        * impl Error for MyError     // Can be empty if no source
 
     pub trait Error: Debug + Display {
-        // opcional implementar source(), por defecto retorna None
+        // optional to implement source(), returns None by default
         fn source(&self) -> Option<&(dyn Error + 'static)> {
             None
         }
     }
 */
 #[cfg(test)]
-mod fundamentos {
+mod fundamentals {
     use std::error::Error;
     use std::fmt;
 
     #[test]
-    pub fn sin_source() {
-        // Definir un error
+    pub fn without_source() {
+        // Define an error
         #[derive(Debug)]
-        enum MiError {
-            Variante1,
-            Variante2,
+        enum MyError {
+            Variant1,
+            Variant2,
         }
 
-        impl fmt::Display for MiError {
+        impl fmt::Display for MyError {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 match self {
-                    MiError::Variante1 => write!(f, "Error de Variante 1"),
-                    MiError::Variante2 => write!(f, "Error de Variante 2"),
+                    MyError::Variant1 => write!(f, "Error of Variant 1"),
+                    MyError::Variant2 => write!(f, "Error of Variant 2"),
                 }
             }
         }
 
-        impl Error for MiError {}
+        impl Error for MyError {}
 
-        // Usar el error
-        fn funcion_que_falla(cond: u8) -> Result<(), MiError> {
+        // Use the error
+        fn function_that_fails(cond: u8) -> Result<(), MyError> {
             match cond {
-                1 => Err(MiError::Variante1),
-                2 => Err(MiError::Variante2),
+                1 => Err(MyError::Variant1),
+                2 => Err(MyError::Variant2),
                 _ => Ok(()),
             }
         }
 
-        // Probar la función
-        match funcion_que_falla(1) {
-            Ok(_) => println!("     Función exitosa"),
+        // Test the function
+        match function_that_fails(1) {
+            Ok(_) => println!("     Function successful"),
             Err(e) => match e {
-                MiError::Variante1 => println!("     Manejando Variante 1"),
-                MiError::Variante2 => println!("     Manejando Variante 2"),
+                MyError::Variant1 => println!("     Handling Variant 1"),
+                MyError::Variant2 => println!("     Handling Variant 2"),
             },
         }
     }
 
     #[test]
-    pub fn con_source() {
-        // Definir un error con source()
+    pub fn with_source() {
+        // Define an error with source()
         #[derive(Debug)]
-        enum OtroError {
+        enum AnotherError {
             SubError,
         }
 
-        impl fmt::Display for OtroError {
+        impl fmt::Display for AnotherError {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                write!(f, "Otro error ocurrió")
+                write!(f, "Another error occurred")
             }
         }
 
-        impl Error for OtroError {}
+        impl Error for AnotherError {}
 
         #[derive(Debug)]
-        enum MiErrorConSource {
-            VarianteConCausa(OtroError),
+        enum MyErrorWithSource {
+            VariantWithCause(AnotherError),
         }
 
-        impl fmt::Display for MiErrorConSource {
+        impl fmt::Display for MyErrorWithSource {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 match self {
-                    MiErrorConSource::VarianteConCausa(_) => {
-                        write!(f, "Error con causa subyacente")
+                    MyErrorWithSource::VariantWithCause(_) => {
+                        write!(f, "Error with underlying cause")
                     }
                 }
             }
         }
 
-        impl Error for MiErrorConSource {
+        impl Error for MyErrorWithSource {
             fn source(&self) -> Option<&(dyn Error + 'static)> {
                 match self {
-                    MiErrorConSource::VarianteConCausa(e) => Some(e),
+                    MyErrorWithSource::VariantWithCause(e) => Some(e),
                 }
             }
         }
 
-        // Usar el error con source()
-        fn funcion_con_causa() -> Result<(), MiErrorConSource> {
-            Err(MiErrorConSource::VarianteConCausa(OtroError::SubError))
+        // Use the error with source()
+        fn function_with_cause() -> Result<(), MyErrorWithSource> {
+            Err(MyErrorWithSource::VariantWithCause(AnotherError::SubError))
         }
 
-        // Probar la función
-        match funcion_con_causa() {
-            Ok(_) => println!("     Función exitosa"),
+        // Test the function
+        match function_with_cause() {
+            Ok(_) => println!("     Function successful"),
             Err(e) => {
-                println!("     Manejando error: {}", e);
-                if let Some(causa) = e.source() {
-                    println!("     Causado por: {}", causa);
+                println!("     Handling error: {}", e);
+                if let Some(cause) = e.source() {
+                    println!("     Caused by: {}", cause);
                 }
             }
         }
@@ -138,18 +138,18 @@ mod fundamentos {
 }
 
 // ============================================================================
-// 2. TIPOS DE ERRORES: ENUM , STRUCT, String
+// 2. ERROR TYPES: ENUM, STRUCT, String
 // ============================================================================
 /*
     IMPL ERROR:
     --------------------------------------------
 
-    * Cualquier tipo de dato que implemente Error a modo practico (enum | struct)
+    * Any data type that implements Error in a practical way (enum | struct)
 
-    VENTAJAS de errores específicos con (enum):
-        * Match exhaustivo - el caller ve todas las variantes
-        * Documentación implícita de qué puede fallar
-        * Permite recuperación específica por tipo de error
+    ADVANTAGES of specific errors with (enum):
+        * Exhaustive match - the caller sees all variants
+        * Implicit documentation of what can fail
+        * Allows specific recovery by error type
 */
 #[cfg(test)]
 mod impl_err {
@@ -161,27 +161,27 @@ mod impl_err {
     #[test]
     pub fn enum_err() {
         #[derive(Debug)]
-        enum AgeError {
+        enum _AgeError {
             TooYoung { age: u8, min: u8 },
             TooOld { age: u8, max: u8 },
             Invalid,
         }
 
-        impl fmt::Display for AgeError {
+        impl fmt::Display for _AgeError {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 match self {
-                    AgeError::TooYoung { age, min } => {
-                        write!(f, "Edad demasiado joven: {} < {}", age, min)
+                    _AgeError::TooYoung { age, min } => {
+                        write!(f, "Age too young: {} < {}", age, min)
                     }
-                    AgeError::TooOld { age, max } => {
-                        write!(f, "Edad demasiado vieja: {} > {}", age, max)
+                    _AgeError::TooOld { age, max } => {
+                        write!(f, "Age too old: {} > {}", age, max)
                     }
-                    AgeError::Invalid => write!(f, "Edad inválida"),
+                    _AgeError::Invalid => write!(f, "Invalid age"),
                 }
             }
         }
 
-        impl Error for AgeError {}
+        impl Error for _AgeError {}
     }
 
     // Struct
@@ -207,7 +207,7 @@ mod impl_err {
         }
         impl Error for DatabaseError {}
 
-        // Solo instanciamos para verificar que compila
+        // We only instantiate to verify it compiles
         let _err_struct = DatabaseError {
             details: "Connection failed".into(),
             datetime: "2023-01-01".into(),
@@ -220,38 +220,38 @@ mod impl_err {
     //------------
     #[test]
     pub fn string_err() {
-        // String como error
+        // String as error
         fn string_error() -> Result<(), String> {
-            Err("Este es un error como string".into())
+            Err("This is an error as string".into())
         }
 
         match string_error() {
-            Ok(_) => println!("     Función exitosa"),
-            Err(e) => println!("     Capturado error como string: {}", e),
+            Ok(_) => println!("     Function successful"),
+            Err(e) => println!("     Captured error as string: {}", e),
         }
     }
 }
 
 // ============================================================================
-// 3. BOX<DYN ERROR>: HETEROGENEIDAD
+// 3. BOX<DYN ERROR>: HETEROGENEITY
 // ============================================================================
 /*
     BOX<DYN ERROR>:
     --------------------------------------------
 
-    * Ventajas de errores genéricos (Box<dyn Error>):
-        * Máxima flexibilidad - cualquier error puede ser retornado
-        * Permite mezclar errores de múltiples bibliotecas
+    * Advantages of generic errors (Box<dyn Error>):
+        * Maximum flexibility - any error can be returned
+        * Allows mixing errors from multiple libraries
 
-    * DESVENTAJA: Pierde información del tipo concreto
+    * DISADVANTAGE: Loses information about the concrete type
 
-    Box<dyn Error> es un "fat pointer" de 16 bytes:
+    Box<dyn Error> is a 16-byte "fat pointer":
     +----------------+----------------+
     | ptr to data    | ptr to vtable  |
     | (8 bytes)      | (8 bytes)      |
     +----------------+----------------+
 
-    El vtable contiene punteros a:
+    The vtable contains pointers to:
         * fmt::Display::fmt()
         * fmt::Debug::fmt()
         * Error::source()
@@ -261,7 +261,7 @@ mod impl_err {
 mod box_dyn_error {
     use std::error::Error;
 
-    /// Función que puede retornar diferentes tipos de error, incluido string
+    /// Function that can return different error types, including string
     #[test]
     pub fn dyn_err() {
         fn multiple_errors() -> Result<(), Box<dyn Error>> {
@@ -273,9 +273,9 @@ mod box_dyn_error {
 
         println!("  ✅ box_dyn_error::dyn_err");
         match multiple_errors() {
-            Ok(_) => println!("     Función exitosa"),
+            Ok(_) => println!("     Function successful"),
             Err(e) => {
-                // downcast si se quiere manejar cada error especifico
+                // downcast if you want to handle each specific error
                 if let Some(parse_err) = e.downcast_ref::<std::num::ParseIntError>() {
                     println!("     ParseIntError: {}", parse_err);
                 } else if let Some(try_from_err) = e.downcast_ref::<std::num::TryFromIntError>() {
@@ -283,7 +283,7 @@ mod box_dyn_error {
                 } else if let Some(utf8_err) = e.downcast_ref::<std::str::Utf8Error>() {
                     println!("     Utf8Error: {}", utf8_err);
                 } else {
-                    println!("     Otro error: {}", e);
+                    println!("     Other error: {}", e);
                 }
             }
         }
@@ -294,39 +294,39 @@ mod box_dyn_error {
 // 4. STRING ERRORS
 // ============================================================================
 /*
-    &str y STRINGS COMO BOX<DYN ERROR>:
+    &str and STRINGS AS BOX<DYN ERROR>:
     --------------------------------------------
 
-    "mensaje".into() -> Box<dyn Error>
+    "message".into() -> Box<dyn Error>
 
-    // Pseudocódigo (no es código real, es privado)
+    // Pseudocode (not real code, it's private)
     impl From<&'static str> for Box<dyn Error> { ... }
     impl From<String> for Box<dyn Error> { ... }
 
-    * Solo puedes comparar el mensaje y usar Display:
+    * You can only compare the message and use Display:
         println!("{}", e);  // Works
-        assert_eq!(e.to_string(), "mensaje");  // Works
-        e.downcast_ref::<String>()  // No funciona - tipo privado
+        assert_eq!(e.to_string(), "message");  // Works
+        e.downcast_ref::<String>()  // Doesn't work - private type
 
-    * La stdlib tiene una impl especial que crea un tipo PRIVADO.
-    * No puedes hacer downcast a &str ni String porque el tipo real es privado.
+    * The stdlib has a special impl that creates a PRIVATE type.
+    * You cannot downcast to &str or String because the real type is private.
 */
 #[cfg(test)]
 mod string_err {
     #[test]
     pub fn string_as_boxed_error() {
         fn error_as_string() -> Result<(), Box<dyn std::error::Error>> {
-            Err("Este es un error como string".into()) // &str -> Box<dyn Error>
+            Err("This is an error as string".into()) // &str -> Box<dyn Error>
         }
 
         match error_as_string() {
-            Ok(_) => println!("     Función exitosa"),
+            Ok(_) => println!("     Function successful"),
             Err(e) => {
-                // no se puede hacer downcast a &str o String, solo comparar
-                if e.to_string().contains("Este es un error como string") {
-                    println!("     Capturado error como string");
+                // cannot downcast to &str or String, only compare
+                if e.to_string().contains("This is an error as string") {
+                    println!("     Captured error as string");
                 } else {
-                    println!("     Otro error: {}", e);
+                    println!("     Other error: {}", e);
                 }
             }
         }
@@ -334,47 +334,47 @@ mod string_err {
 }
 
 // ============================================================================
-// 5. CONVERSIÓN Y PROPAGACIÓN
+// 5. CONVERSION AND PROPAGATION
 // ============================================================================
 /*
-    EL OPERADOR ? Y LA CONVERSIÓN DE ERRORES:
+    THE ? OPERATOR AND ERROR CONVERSION:
     --------------------------------------------
 
-    * El operador ? hace dos cosas:
-        1. Si Ok(v) -> desenvuelve y continúa
-        2. Si Err(e) -> llama From::from(e) y retorna
+    * The ? operator does two things:
+        1. If Ok(v) -> unwraps and continues
+        2. If Err(e) -> calls From::from(e) and returns
 
-    validate_age(age)?  es equivalente a:
+    validate_age(age)?  is equivalent to:
     match validate_age(age) {
         Ok(v) => v,
         Err(e) => return Err(From::from(e)),
     }
 
-    * Para que funcione: impl From<ErrorOrigen> for ErrorDestino
+    * For it to work: impl From<SourceError> for DestinationError
 
-    * ALTERNATIVA: map_err para conversión explícita
+    * ALTERNATIVE: map_err for explicit conversion
         file.read().map_err(|e| MyError::Io(e.to_string()))?;
 */
 #[cfg(test)]
-mod conversion_propagacion {
+mod conversion_propagation {
     use std::num::ParseIntError;
 
     #[test]
     pub fn demo_question_operator() {
         fn parse_and_double(s: &str) -> Result<i32, ParseIntError> {
-            // Si parse falla, retorna el error automáticamente
+            // If parse fails, returns the error automatically
             let n: i32 = s.parse()?;
             Ok(n * 2)
         }
 
         match parse_and_double("10") {
-            Ok(n) => println!("     Exito: {}", n),
+            Ok(n) => println!("     Success: {}", n),
             Err(e) => println!("     Error: {}", e),
         }
 
-        match parse_and_double("no numero") {
-            Ok(n) => println!("     Exito: {}", n),
-            Err(e) => println!("     Error esperado: {}", e),
+        match parse_and_double("no number") {
+            Ok(n) => println!("     Success: {}", n),
+            Err(e) => println!("     Expected error: {}", e),
         }
     }
 }
@@ -386,17 +386,17 @@ mod conversion_propagacion {
     THISERROR: REDUCE BOILERPLATE:
     --------------------------------------------
 
-    * ¿Qué genera automáticamente?
-        * impl Display         -> desde #[error("mensaje")]
-        * impl Error           -> con source() automático si hay #[source]
-        * impl From<E>         -> desde #[from] para conversión automática
+    * What does it generate automatically?
+        * impl Display         -> from #[error("message")]
+        * impl Error           -> with automatic source() if #[source]
+        * impl From<E>         -> from #[from] for automatic conversion
 
-    * ATRIBUTOS:
-        #[error("...")]   -> Define el mensaje de Display
-        #[from]           -> Genera impl From<T> (permite usar ?)
-        #[source]         -> Marca el campo como source() (causa del error)
-        {0}, {1}          -> Interpola campos por posición
-        {field}           -> Interpola campos por nombre
+    * ATTRIBUTES:
+        #[error("...")]   -> Defines the Display message
+        #[from]           -> Generates impl From<T> (allows using ?)
+        #[source]         -> Marks the field as source() (error cause)
+        {0}, {1}          -> Interpolates fields by position
+        {field}           -> Interpolates fields by name
 */
 #[cfg(test)]
 mod this_error {
@@ -408,22 +408,22 @@ mod this_error {
     pub fn this_error_demo() {
         #[derive(ThisError, Debug)]
         enum DatabaseError {
-            #[error("Parse int error: {0}")] // {0} = primer campo posicional
-            ParseInt(#[from] ParseIntError), // variante con campo posicional
+            #[error("Parse int error: {0}")] // {0} = first positional field
+            ParseInt(#[from] ParseIntError), // variant with positional field
 
-            #[error("Query failed: {query}")] // {query} = campo nombrado
+            #[error("Query failed: {query}")] // {query} = named field
             QueryFailed {
-                // variante con campos nombrados
+                // variant with named fields
                 query: String,
-                #[source] // marca causa del error
+                #[source] // marks error cause
                 cause: io::Error,
             },
         }
 
         fn db_operation() -> Result<(), DatabaseError> {
-            let _num: u32 = "abc".parse()?; // convierte ParseIntError a DatabaseError
+            let _num: u32 = "abc".parse()?; // converts ParseIntError to DatabaseError
 
-            // Simular un error de consulta
+            // Simulate a query error
             let io_err = io::Error::new(io::ErrorKind::Other, "connection lost");
             return Err(DatabaseError::QueryFailed {
                 query: "SELECT * FROM users".into(),
@@ -449,15 +449,15 @@ mod this_error {
 // 7. ANYHOW
 // ============================================================================
 /*
-    ANYHOW: AGREGANDO CONTEXTO:
+    ANYHOW: ADDING CONTEXT:
     --------------------------------------------
 
-    * .context("msg")      -> Siempre evalúa el string
-    * .with_context(|| ..) -> Lazy, solo evalúa si hay error
-    * bail!("msg")         -> Crea error y retorna inmediatamente
+    * .context("msg")      -> Always evaluates the string
+    * .with_context(|| ..) -> Lazy, only evaluates on error
+    * bail!("msg")         -> Creates error and returns immediately
 
-    * Cada .context() ENVUELVE el error anterior.
-    * Múltiples contextos se apilan.
+    * Each .context() WRAPS the previous error.
+    * Multiple contexts are stacked.
 */
 #[cfg(test)]
 mod anyhow {
@@ -468,7 +468,7 @@ mod anyhow {
     #[test]
     pub fn anyhow_demo() {
         fn load_port(path: &str) -> AnyResult<u16> {
-            // Simulamos lectura de archivo
+            // Simulate file reading
             let contents = if path.contains("no_existe") {
                 Err(std::io::Error::new(
                     std::io::ErrorKind::NotFound,
@@ -479,46 +479,46 @@ mod anyhow {
             };
 
             let contents =
-                contents.with_context(|| format!("Leyendo archivo de puerto: {}", path))?;
+                contents.with_context(|| format!("Reading port file: {}", path))?;
 
             let port: u16 = contents
                 .trim()
                 .parse()
-                .context("Parseando puerto como u16")?;
+                .context("Parsing port as u16")?;
 
             if port == 0 {
-                bail!("Puerto no puede ser 0");
+                bail!("Port cannot be 0");
             }
             Ok(port)
         }
 
-        // Mostrar el error
+        // Show the error
         match load_port("/tmp/no_existe") {
-            Ok(p) => println!("     Puerto cargado: {}", p),
-            Err(e) => println!("     Error cargando puerto: {}", e),
+            Ok(p) => println!("     Port loaded: {}", p),
+            Err(e) => println!("     Error loading port: {}", e),
         }
 
-        // Listar causas con chain()
-        // Simulamos un error de parseo para ver la cadena
+        // List causes with chain()
+        // Simulate a parse error to see the chain
         fn fail_parse() -> AnyResult<()> {
             let _n: i32 = "abc".parse().context("Parsing integer")?;
             Ok(())
         }
 
         if let Err(e) = fail_parse() {
-            println!("     Chain de errores:");
+            println!("     Error chain:");
             for (i, cause) in e.chain().enumerate() {
                 println!("       [{}]: {}", i, cause);
             }
         }
 
-        // Acceder a la causa raiz
+        // Access the root cause
         if let Err(e) = fail_parse() {
             if let Some(root) = e.chain().last() {
                 if let Some(parse_err) = root.downcast_ref::<ParseIntError>() {
-                    println!("     Causa raíz es ParseIntError: {}", parse_err);
+                    println!("     Root cause is ParseIntError: {}", parse_err);
                 } else if let Some(utf8_err) = root.downcast_ref::<Utf8Error>() {
-                    println!("     Causa raíz es Utf8Error: {}", utf8_err);
+                    println!("     Root cause is Utf8Error: {}", utf8_err);
                 }
             }
         }
@@ -529,21 +529,21 @@ mod anyhow {
 // 8. RUST_BACKTRACE
 // ============================================================================
 /*
-    ¿CUÁNDO SE CAPTURA UN BACKTRACE?
+    WHEN IS A BACKTRACE CAPTURED?
     --------------------------------------------
 
-    Situación                    | Backtrace con RUST_BACKTRACE=1
+    Situation                    | Backtrace with RUST_BACKTRACE=1
     -----------------------------|-------------------------------
-    panic!()                     | ✅ Siempre
+    panic!()                     | ✅ Always
     Result::Err (normal)         | ❌ No
     Box<dyn Error>               | ❌ No
     thiserror                    | ❌ No
-    anyhow::Error                | ✅ Sí
+    anyhow::Error                | ✅ Yes
 
-    Valores de RUST_BACKTRACE:
-        0    -> Sin backtrace
-        1    -> Backtrace resumido
-        full -> Backtrace completo
+    RUST_BACKTRACE values:
+        0    -> No backtrace
+        1    -> Summary backtrace
+        full -> Full backtrace
 */
 #[cfg(test)]
 mod backtrace {
@@ -559,7 +559,7 @@ mod backtrace {
             Critical { backtrace: String },
         }
 
-        // Capturar manualmente:
+        // Capture manually:
         let _err = MyError::Critical {
             backtrace: Backtrace::capture().to_string(),
         };

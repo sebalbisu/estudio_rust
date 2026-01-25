@@ -1,248 +1,89 @@
-/*
-=========================================================================
-RESUMEN
-=========================================================================
-
-    CLOSURE = Función anónima que puede CAPTURAR su entorno
-
-    Internamente un closure es un struct donde sus campos son las variables capturadas e implementa uno o mas de los traits Fn|FnMut|FnOnce(Args...) -> Output
-
-    let x = String::from("hola");
-    let callback = |y: i32| -> String { format!("{} {}", x, y) }
-
-    es conceptualmente:
-    struct __AnonymousClosure {
-        x: &String,
-    }
-    impl Fn(i32) -> String for __AnonymousClosure {
-        fn call(&self, y: i32) -> String {
-            format!("{} {}", *self.x, y)
-        }
-    }
-    al implementar Fn el compilador tambien implementa FnMut y FnOnce
-    Traits implementados:
-        Fn(i32) -> String
-        FnMut(i32) -> String
-        FnOnce(i32) -> String
-
-    Clasificacion:
-        Fn:   Si solo LEE lo capturado
-        FnMut: Si MODIFICA lo capturado
-        FnOnce: Si CONSUME lo capturado
-
-    Herencia Traits:
-        Fn : FnMut : FnOnce
-
-    Familia de Traits:
-        Cada closure implementa uno o mas traits segun su firma:
-            Fn(Args...) -> Output
-            FnMut(Args...) -> Output
-            FnOnce(Args...) -> Output
-        es lo que permite usarlos como genericos, en vez de tipo concreto.
-
-    Move:
-        - Sin move: captura por referencia (& o &mut) según uso
-        - Con move: captura ownership de todo lo capturado
-        - move implicito: cuando se consume algo dentro del closure, el compilador aplica move automáticamente.
-
-    Impl y Dyn:
-        - impl Fn... : monomorfizmo: parametros y return unicos de funciones
-        - Box<dyn Fn...> : colecciones heterogéneas del mismo trait: para funciones que retornan diferentes tipos de closures con mismo trait.
-*/
-
-/*
-========================================================================
-CLOSURES Y CALLBACKS EN RUST
-========================================================================
-
-    CONCEPTO CLAVE: Un closure es un STRUCT ANÓNIMO generado por el
-    compilador, cuyos campos son las variables capturadas, y que
-    implementa Fn, FnMut, y/o FnOnce según cómo use esas capturas.
-
-    TÚ ESCRIBES:
-
-      let factor = 10;
-      let scale = |x| x * factor;
-
-    EL COMPILADOR GENERA (conceptualmente):
-
-      struct __AnonymousClosure {
-          factor: &i32,         // campo = variable capturada
-      }
-
-      impl Fn(i32) -> i32 for __AnonymousClosure {
-          fn call(&self, x: i32) -> i32 {
-              x * (*self.factor)
-          }
-      }
-
-
-    ANALOGÍA CON REFERENCIAS & , &mut , T:
-    --------------------------------------------
-        Fn ~ &T:
-            • Puede ser llamado múltiples veces
-            • No muta ni consume lo capturado
-
-        FnMut ~ &mut T:
-            • Puede ser llamado múltiples veces
-            • Muta lo capturado
-            • Requiere acceso exclusivo (como &mut closure) por una variable
-
-        FnOnce ~ T (ownership):
-            • Cuando captura con move el ownership de una variable
-            • Puede ser Fn, FnMut, u FnOnce dependiendo del uso
-            • Fn: si solo lee
-            • FnMut: si muta
-            • FnOnce: si consume/retorna la variable capturada
-              - solo este caso se puede ejecutar una sola vez
-
-// @test
-
-    HERENCIA DE TRAITS:
-    --------------------------------------------
-        Fn : FnMut : FnOnce
-        Fn hereda de FnMut, y FnMut hereda de FnOnce.
-
-        trait FnOnce<Args> {
-            type Output;
-            fn call_once(self, args: Args) -> Self::Output;
-        }
-
-        trait FnMut<Args>: FnOnce<Args> {
-            fn call_mut(&mut self, args: Args) -> Self::Output;
-        }
-
-        trait Fn<Args>: FnMut<Args> {
-            fn call(&self, args: Args) -> Self::Output;
-        }
-
-        Entonces Fn se puede ver conceptualmente como:
-
-        trait Fn<Args> {
-            fn call(&self, args: Args) -> Self::Output {
-                // implementacion closure
-            }
-            fn call_mut(&mut self, args: Args) -> Self::Output {
-                self.call(args)
-            }
-            fn call_once(self, args: Args) -> Self::Output {
-                self.call_mut(&mut self, args)
-            }
-        }
-
-        Es decir:
-          - Todo Fn es también FnMut y FnOnce.
-          - Todo FnMut es también FnOnce.
-
-        Si un closure puede ser llamado muchas veces sin mutar ni consumir nada (Fn),
-        entonces también puede ser usado donde se permite mutar (FnMut) o consumir (FnOnce),
-        porque no rompe ninguna regla de los casos más generales.
-
-        Entonces, todo closure es al menos un FnOnce.
-
-
-    Traits de CLOSURES: FAMILIAS
-    --------------------------------------------
-        Cada familia queda determinada por dos componentes:
-            * Fn / FnMut / FnOnce
-            * Firma: (Args...), Output
-        Ejemplos (todos son traits DIFERENTES):
-            Fn()              =  Fn<(), Output=()>
-            FnMut()           =  FnMut<(), Output=()>
-            Fn(i32) -> i32    =  Fn<(i32,), Output=i32>
-            Fn(i32, i32) -> i32 = Fn<(i32, i32), Output=i32>
-            Fn(String) -> bool = Fn<(String,), Output=bool>
-
-        ¡No puedes mezclar Fn(i32)->i32 con Fn(String)->bool!
-        "Fn" sin firma NO es un trait válido. Siempre necesitas:
-            Fn<Args, Output>
-
-// @test
-
-    THREADS SAFE: FnOnce + Send + 'static
-    --------------------------------------------
-        Para que una variable tipo T pueda ser enviado a un closure de un thread,
-        debe ser Send + 'static:
-        - Send: para que pueda ser movido entre threads
-        - 'static: para que viva toda la vida del thread (Ownership, Copy, &str,Arc, const, static)
-
-        Por eso se usa con move, para transferir ownership al thread, salvo las referencias 'static.
-
-        Variables tipo closure adentro de threads:
-        Todo closure que es Send + 'static también es FnOnce + Send + 'static.
-        Mismos requisitos para usar en threads.
-
-// @test
-
-    ASYNC CLOSURES:
-    --------------------------------------------
-        F: FnOnce + 'static
-
-        Si un async closure es !Send -> se ejecuta en el mismo thread.
-        Si un async closure es Send -> puede ser enviado a otro thread.
-
-// @test
-
-    CLOSURES TRAITS: IMPL Y DYN
-    --------------------------------------------
-        Si tipo implementa el trait de Fn, FnMut, FnOnce en su declaracion
-        como son traits, entonces o bien son genéricos (impl Fn...) o bien son trait objects (Box<dyn Fn...>)
-
-// @test
-
-    CLOSURES NO VARIADICS, TIPOS FIJOS
-    --------------------------------------------
-        Los closures en Rust NO SON VARIADICS:
-        - Siempre tienen una firma fija de argumentos y tipo de retorno
-        - No pueden tener argumentos opcionales ni por defecto
-        - No pueden tener un número variable de argumentos (variadics)
-
-        A diferencia de C++, Rust prioriza la seguridad de tipos y memoria.
-        Si se quiere pasar un número variable de argumentos, se puede usar slices (&[T]),
-        tuplas, vectores (Vec<T>), o usar macros.
-*/
 
 #[test]
-fn indice() {}
+fn index() {
+    // ===== BASICS =====
+    what_is_a_closure::what_is_a_closure();
+    capture_vs_parameter::capture_vs_parameter();
+    
+    // ===== CLOSURE TRAITS =====
+    fn_trait::fn_trait();
+    fn_mut_trait::fn_mut_trait();
+    fn_once_trait::fn_once_trait();
+    closure_and_stackframe::closure_and_stackframe();
+    closure_as_struct::closure_as_struct();
+    trait_inheritance_and_families::inheritance();
+    trait_inheritance_and_families::traits_matching();
+    trait_inheritance_and_families::different_traits();
+    
+    // ===== MOVE SEMANTICS =====
+    move_fn_fn_mut_fn_once::no_move_fn();
+    move_fn_fn_mut_fn_once::no_move_fn_mut();
+    move_fn_fn_mut_fn_once::move_closure_fn();
+    move_fn_fn_mut_fn_once::move_closure_fn_mut();
+    move_fn_fn_mut_fn_once::move_closure_fn_once();
+    move_fn_fn_mut_fn_once::move_thread();
+    move_fn_fn_mut_fn_once::move_return_closure();
+    move_fn_fn_mut_fn_once::move_copy_type();
+    move_references::with_move_references();
+    move_references::without_move_references();
+    move_implicit::move_implicit_consumption();
+    
+    // ===== IMPL vs DYN =====
+    impl_dyn::impl_param();
+    impl_dyn::impl_return();
+    impl_dyn::dyn_param();
+    impl_dyn::dyn_return();
+    impl_dyn::dyn_collection();
+    impl_dyn::dyn_storage();
+    
+    // ===== PATTERNS =====
+    patterns::closure_factories::closure_factories();
+    patterns::strategy_pattern::strategy_pattern();
+    patterns::middleware_pattern::middleware_pattern();
+    patterns::lazy_evaluation::lazy_evaluation();
+    patterns::event_listeners::event_listeners();
+    patterns::stateful_closures::stateful_closures();
+    patterns::currying_partial_application::currying_partial_application();
+}
 
 /*
 ========================================================================
-QUE_ES_UN_CLOSURE
+WHAT_IS_A_CLOSURE
 ========================================================================
 
-    ¿QUÉ ES UN CLOSURE?
+    WHAT IS A CLOSURE?
     --------------------------------------------
-        CLOSURE = Función anónima que puede CAPTURAR su entorno
+        CLOSURE = Anonymous function that can CAPTURE its environment
 
-        DIAGRAMA:
+        DIAGRAM:
         ┌─────────────────────────────────────────────────────────────────────────┐
-        │  FUNCIÓN NORMAL:                     CLOSURE:                           │
+        │  NORMAL FUNCTION:                    CLOSURE:                           │
         │  fn add(a: i32, b: i32) -> i32       let add = |a, b| a + b;            │
         │      a + b                                                              │
         │                                                                         │
-        │  LA DIFERENCIA CLAVE: Captura del entorno                               │
+        │  KEY DIFFERENCE: Environment capture                                    │
         │                                                                         │
         │      let factor = 10;                                                   │
         │          │                                                              │
         │          ▼                                                              │
         │      ┌───────┐                                                          │
-        │      │  10   │  ◄── variable en scope                                   │
+        │      │  10   │  ◄── variable in scope                                   │
         │      └───────┘                                                          │
         │          ▲                                                              │
-        │          │ captura automática                                           │
+        │          │ automatic capture                                            │
         │      ┌───┴─────────────────┐                                            │
         │      │ let scale = |x| x * factor;                                      │
         │      │             ▲                                                    │
-        │      │             └── usa factor sin pasarlo como parámetro            │
+        │      │             └── uses factor without passing it as parameter      │
         │      └─────────────────────┘                                            │
         │                                                                         │
         │      scale(5)  →  50                                                    │
         └─────────────────────────────────────────────────────────────────────────┘
 */
 #[cfg(test)]
-mod que_es_un_closure {
+mod what_is_a_closure {
     #[test]
-    pub fn que_es_un_closure() {
+    pub fn what_is_a_closure() {
         let add = |a, b| a + b;
         assert_eq!(add(2, 3), 5);
 
@@ -254,35 +95,35 @@ mod que_es_un_closure {
 
 /*
 ========================================================================
-CAPTURA_VS_PARAMETRO
+CAPTURE_VS_PARAMETER
 ========================================================================
 
-    CAPTURA vs PARÁMETRO - ¡Son cosas diferentes!
+    CAPTURE vs PARAMETER - They are different things!
     --------------------------------------------
-        DIAGRAMA:
+        DIAGRAM:
         ┌─────────────────────────────────────────────────────────────────────────┐
-        │   CAPTURA (del entorno):                                                │
+        │   CAPTURE (from environment):                                           │
         │   ┌─────────────────────────────────────────────────────────────────┐   │
         │   │  let multiplier = 2;                                            │   │
         │   │  let f = |x| x * multiplier;                                    │   │
         │   │              ▲       ▲                                          │   │
-        │   │              │       └── CAPTURADO (viene del entorno)          │   │
-        │   │              └────────── PARÁMETRO (pasado al llamar)           │   │
+        │   │              │       └── CAPTURED (comes from environment)      │   │
+        │   │              └────────── PARAMETER (passed when calling)        │   │
         │   └─────────────────────────────────────────────────────────────────┘   │
         │                                                                         │
-        │   PARÁMETRO SOLAMENTE (sin captura):                                    │
+        │   PARAMETER ONLY (without capture):                                     │
         │   ┌─────────────────────────────────────────────────────────────────┐   │
-        │   │  let add = |a, b| a + b;   ← No captura nada                    │   │
+        │   │  let add = |a, b| a + b;   ← Captures nothing                   │   │
         │   │                                                                 │   │
-        │   │  // ¡Este closure es básicamente una función!                   │   │
-        │   │  // Puede coercerse a: fn(i32, i32) -> i32                      │   │
+        │   │  // This closure is basically a function!                       │   │
+        │   │  // Can be coerced to: fn(i32, i32) -> i32                      │   │
         │   └─────────────────────────────────────────────────────────────────┘   │
         └─────────────────────────────────────────────────────────────────────────┘
 */
 #[cfg(test)]
-mod captura_vs_parametro {
+mod capture_vs_parameter {
     #[test]
-    pub fn captura_vs_parametro() {
+    pub fn capture_vs_parameter() {
         let multiplier = 2;
         let multiply = |x| x * multiplier;
         assert_eq!(multiply(5), 10);
@@ -294,12 +135,97 @@ mod captura_vs_parametro {
 
 /*
 ========================================================================
-FN_TRAIT
+CLOSURE AND FUNCTIONS
 ========================================================================
 
-    Fn - Captura por REFERENCIA INMUTABLE
+    Closure: 
     --------------------------------------------
-    No altera ni consume lo capturado
+    * es un Fn|FnMut|FnOnce(Args) -> Output
+    * puede capturar variables del entorno
+
+    Function Pointer: 
+    --------------------------------------------
+    * es un fn(Args) -> Output
+    * no puede capturar variables del entorno 
+    y implementa internamente Fn, entonces puede ser usado como Fn, FnMut o FnOnce
+    * no usa impl, es un tipo concreto, no es un trait
+*/
+#[cfg(test)]
+pub mod closure_and_functions {
+    #[test]
+    pub fn functions_as_parameters() {
+        fn greet(f: fn() -> String) -> String { // no usa impl 
+            f()
+        }
+
+        fn say_hello() -> String {
+            return String::from("Hello, world!");
+        }
+
+        assert_eq!(greet(say_hello), String::from("Hello, world!"));
+    }
+
+    #[test]
+    pub fn fn_compatible_with_trait() {
+        fn greet(f: impl Fn() -> String) -> String { // usa impl 
+            f()
+        }
+
+        fn say_hello() -> String {
+            return String::from("Hello, world!");
+        }
+
+        let say_hi = || {
+            return String::from("Hi, world!");
+        };
+
+        assert_eq!(greet(say_hello), String::from("Hello, world!"));  // works with fn
+        assert_eq!(greet(say_hi), String::from("Hi, world!"));  // works with closure
+    }
+
+}
+
+/*
+========================================================================
+CLOSURE AND STACKFRAME
+========================================================================
+
+Cuando se llama a una closure, se crea un stackframe temporal (como cualquier función)
+
+*/
+#[cfg(test)]
+pub mod closure_and_stackframe {
+    #[test]
+    pub fn closure_and_stackframe() { }
+}
+
+/*
+========================================================================
+CLASIFICATION AND ANALOGIES WITH REFERENCES
+========================================================================
+    Fn ~ &T: READ ONLY
+        • Captures: 
+            * immutable reference, copy, 
+            * move: owned value with *READ ONLY* access   (using move)
+        • Does not mutate or consume what is captured
+        • Can be called multiple times
+
+    FnMut ~ &mut T: MUTABLE 
+        • Captures: 
+           * mutable reference
+           * move: owned value with *MUTABLE* access 
+        • Mutates what is captured -> mut keyword required
+        • Can be called multiple times
+
+    FnOnce ~ T (ownership): CONSUMES 
+        • Captures: ownership of a variable (using move)
+        • *CONSUMES* a captured variable
+        • Can only be called once
+*/
+
+/*
+FN TRAIT - READ ONLY
+--------------------------------------------
 */
 #[cfg(test)]
 mod fn_trait {
@@ -315,17 +241,30 @@ mod fn_trait {
         print_value();
         assert_eq!(value, 10);
     }
+
+    #[test]
+    pub fn fn_trait_with_mutable_reference() {
+        let mut value = 10;
+
+        let _print_value = || {
+            value += 1;
+            assert_eq!(value, 11);
+        };
+    }
+
+    #[test]
+    pub fn fn_trait_with_owned_value() {
+        let value = 10;
+
+        let _print_value = move|| {
+            assert_eq!(value, 10);
+        };
+    }
 }
 
 /*
-========================================================================
-FN_MUT_TRAIT
-========================================================================
-
-    FnMut - Captura por REFERENCIA MUTABLE
-    --------------------------------------------
-    Permite modificar lo capturado
-
+FN_MUT TRAIT - MUTABLE
+--------------------------------------------
 */
 #[cfg(test)]
 mod fn_mut_trait {
@@ -343,16 +282,21 @@ mod fn_mut_trait {
         assert_eq!(increment(), 3);
         assert_eq!(counter, 3);
     }
+
+    #[test]
+    pub fn fn_mut_trait_with_owned_value() {
+        let mut value = 10;
+
+        let mut _increment = || {
+            value += 1;
+            value
+        };
+    }
 }
 
 /*
-========================================================================
-FN_ONCE_TRAIT
-========================================================================
-
-    FnOnce - CONSUME el valor capturado
-    --------------------------------------------
-    Solo puede ser llamado una vez
+FN_ONCE TRAIT - CONSUMES
+--------------------------------------------
 */
 #[cfg(test)]
 mod fn_once_trait {
@@ -366,7 +310,149 @@ mod fn_once_trait {
         };
 
         consume();
-        // consume(); // ✗ ERROR: no se puede llamar dos veces
+        // data is dropped, so it cannot be used again
+        // consume(); // ✗ ERROR: cannot be called twice
+    }
+}
+
+/*
+=========================================================================
+CLOSURE AS STRUCT
+=========================================================================
+
+    A closure is an anonymous struct 
+        * its fields are the captured variables
+        * implements one or more of the traits:
+            * Fn: call(&self, args...) -> Output
+            * FnMut: call_mut(&mut self, args...) -> Output
+            * FnOnce: call_once(self, args...) -> Output
+        * running the closure is executing the method of the trait that implements it
+
+    Example:
+        let x = String::from("hello");
+        let callback = |y: i32| -> String { format!("{} {}", x, y) }
+
+        Conceptually it is:
+
+            struct __AnonymousClosure {
+                x: &String,
+            }
+
+            impl Fn(i32) -> String for __AnonymousClosure {
+                fn call(&self, y: i32) -> String {
+                    format!("{} {}", *self.x, y)
+                }
+            }
+
+    by implementing Fn the compiler also implements FnMut and FnOnce, so it
+    can be used in any context that requires one of the traits.
+    Implemented Traits: Fn|FnMut|FnOnce(i32) -> String
+            
+            // internally the compiler generates this code:
+            impl FnMut(i32) -> String for __AnonymousClosure {
+                fn call_mut(&mut self, y: i32) -> String {
+                    self.call(y)    
+                }
+            }
+
+            // internally the compiler generates this code:
+            impl FnOnce(i32) -> String for __AnonymousClosure {
+                fn call_once(self, y: i32) -> String {
+                    self.call_mut(y)    
+                }
+            }
+        }
+
+*/
+#[cfg(test)]
+pub mod closure_as_struct {
+    #[test]
+    pub fn closure_as_struct() { }
+}
+
+/*
+========================================================================
+TRAIT INHERITANCE AND FAMILIES
+========================================================================
+
+    Trait Inheritance:
+    --------------------------------------------
+        Fn : FnMut : FnOnce
+
+    Trait Families:
+    --------------------------------------------
+        Each closure implements one or more traits according to its signature:
+            Fn(Args...) -> Output
+            FnMut(Args...) -> Output
+            FnOnce(Args...) -> Output
+        this is what allows using them as generics, instead of a concrete type.
+
+        Note: 
+        - Fn(i32)->i32 and Fn(String)->bool are different traits.
+        - You cannot mix them.
+
+            trait Fn(i32)->i32 {
+                fn call(&self, arg: i32) -> i32;
+            }
+            trait Fn(String)->bool {
+                fn call(&self, arg: String) -> bool;
+            }
+*/
+#[cfg(test)]
+pub mod trait_inheritance_and_families {
+
+    // Fn : FnMut : FnOnce inheritance
+    #[test]
+    pub fn inheritance() {
+        // Accepts any trait Fn, FnMut or FnOnce
+        fn fn_param(callback: impl FnOnce(i32) -> i32) {
+            callback(1);
+            assert!(true);
+        }
+        
+        // Fn : FnMut
+        let callback_fn = |x: i32| x + 1;
+        fn_param(callback_fn);
+
+        // FnMut : FnOnce
+        let mut data = String::from("hello");
+        let callback_fn_mut = | x: i32| { 
+            data.push('a'); 
+            x
+        };
+        fn_param(callback_fn_mut);
+
+        // FnOnce
+        let data2 = String::from("hello");
+        let callback_fn_once = move |x: i32| {
+            drop(data2);
+            x
+        };
+        fn_param(callback_fn_once);
+    }
+
+    // Fn(i32) -> i32 same signature
+    pub fn traits_matching() {
+        fn fn_param(callback: impl Fn(i32) -> i32) {
+            callback(1);
+            assert!(true);
+        }
+        
+        // Fn(i32) -> i32
+        let callback_fn = |x: i32| x + 1;
+        fn_param(callback_fn);
+    }
+
+    // different signatures, not implement same traits
+    pub fn different_traits() {
+        fn _fn_param(callback: impl Fn(i32) -> bool) {
+            callback(1);
+            assert!(true);
+        }
+        
+        // Fn(i32) -> i32 -> bool different signature
+        let _callback_fn = |x: i32| x > 1;
+        // _fn_param(callback_fn);   // ✗ ERROR: different signature
     }
 }
 
@@ -375,69 +461,40 @@ mod fn_once_trait {
 MOVE
 ========================================================================
 
-    SIN move: siempre captura por referencia (&T o &mut T)
-              el compilador decide que es necesario según uso.
-              se crea una nueva variable referenciando la original.
-    CON move: siempre ownership de TODO lo capturado
+    - Sin move: captura por referencia (& o &mut) según uso
+    - Con move: captura ownership de todo lo capturado
+    - move implicito: cuando se consume algo dentro del closure, 
+    el compilador aplica move automáticamente.
 
-    DIAGRAMA:
-    ┌─────────────────────────────────────────────────────────────────────────┐
-    │   ┌─────────────────────────────────────────────────────────────────┐   │
-    │   │  let name = String::from("Alice");                              │   │
-    │   │  let age = 30;  // i32 es Copy                                  │   │
-    │   │                                                                 │   │
-    │   │  SIN move:                    CON move:                         │   │
-    │   │  let f = || name.len();       let f = move || name.len();       │   │
-    │   │           ▲                            ▲                        │   │
-    │   │           └─ captura &name             └─ MUEVE name al closure │   │
-    │   │                                                                 │   │
-    │   │  println!(name); ✓ OK         println!(name); ✗ ERROR           │   │
-    │   └─────────────────────────────────────────────────────────────────┘   │
-    │                                                                         │
-    │   NOTA: Para tipos Copy (i32, bool, etc), move hace una COPIA           │
-    │         Para tipos no-Copy (String, Vec), move TRANSFIERE ownership     │
-    └─────────────────────────────────────────────────────────────────────────┘
-
-    Move y referencias:
+    Move and references:
     --------------------------------------------
-        A fines practicos es identico a usar sin move para referencias.
-        Las referencias son Copy, por lo que crea otra referencia dentro del closure,
-        dejando la variable original intacta.
-        El lifetime de la referencia capturada es el mismo que el de la variable original.
+        References are Copy, so it creates another reference inside the closure,
 
-    Traits Fn, FnMut, FnOnce y move
+    implicit move
     --------------------------------------------
+        there are cases where the compiler applies implicit move:
+            * When detecting a drop / consumption inside the closure
+            * When using closures in threads
+            * When returning closures from functions
 
-    Move no determina el trait que implementa el closure.
-    El trait depende de que hace el closure con sus capturas.
-        - Si SOLO LEE lo capturado → Fn
-        - Si MODIFICA lo capturado → FnMut
-        - Si CONSUME lo capturado → FnOnce
-
-    move y 'static
-    --------------------------------------------
-        Si todo lo capturado con move es 'static entonces el closure es 'static
-        y vive todo lo que vive la variable que lo contiene.
-
-        Util en :
-            * Threads / Async
-            * Return de funciones / closures
-            * Almacenamiento en estructuras de datos de larga vida
-
-    move implicito
-    --------------------------------------------
-        hay casos donde el compilador aplica move implícito:
-            * Al detectar un drop / consumo dentro del closure
-            * Al usar closures en threads
-            * Al retornar closures desde funciones
-
-        Ejemplo:
-        let x = String::from("hola");
+        Example:
+        let x = String::from("hello");
         let c = || { drop (x); }
-        let c = move || { drop(x); } // el compilador lo convierte en move
+        let c = move || { drop(x); } // compiler converts it to move
+
+
+    move and 'static
+    --------------------------------------------
+        If everything captured with move is 'static then the closure is 'static
+        and lives as long as the variable that contains it.
+
+        Useful for:
+            * Threads / Async
+            * Return from functions / closures
+            * Storage in long-lived data structures
 */
 #[cfg(test)]
-mod move_fn_fnMut_fnOnce {
+mod move_fn_fn_mut_fn_once {
 
     #[test]
     pub fn no_move_fn() {
@@ -448,7 +505,7 @@ mod move_fn_fnMut_fnOnce {
     }
 
     #[test]
-    pub fn no_move_fnMut() {
+    pub fn no_move_fn_mut() {
         let mut data = vec![1, 2, 3];
         let mut add_value = |v| {
             data.push(v);
@@ -468,7 +525,7 @@ mod move_fn_fnMut_fnOnce {
     }
 
     #[test]
-    pub fn move_closure_fnMut() {
+    pub fn move_closure_fn_mut() {
         let mut data = vec![1, 2, 3];
         let mut add_value = move |v| {
             data.push(v);
@@ -480,13 +537,13 @@ mod move_fn_fnMut_fnOnce {
     }
 
     #[test]
-    pub fn move_closure_fnOnce() {
+    pub fn move_closure_fn_once() {
         let data = vec![1, 2, 3];
         let consume_data = move || {
             drop(data);
         };
         consume_data();
-        // consume_data(); // ✗ ERROR: no se puede llamar dos veces
+        // consume_data(); // ✗ ERROR: cannot be called twice
     }
 
     #[test]
@@ -521,22 +578,22 @@ mod move_fn_fnMut_fnOnce {
 #[cfg(test)]
 mod move_references {
     #[test]
-    pub fn con_move_references() {
+    pub fn with_move_references() {
         let text = String::from("Hello, world!");
         let text_ref = &text;
         let print_text = move || {
-            // text_ref es una referencia copiada
+            // text_ref is a copied reference
             assert_eq!(text_ref, "Hello, world!");
         };
         print_text();
     }
 
     #[test]
-    pub fn sin_move_references() {
+    pub fn without_move_references() {
         let text = String::from("Hello, world!");
         let text_ref = &text;
         let print_text = || {
-            // text_ref es una referencia copiada
+            // text_ref is a copied reference
             assert_eq!(text_ref, "Hello, world!");
         };
         print_text();
@@ -544,60 +601,47 @@ mod move_references {
 }
 
 #[cfg(test)]
-mod move_implicito {
+mod move_implicit {
     #[test]
-    pub fn move_implicito_consumo() {
+    pub fn move_implicit_consumption() {
         let message = String::from("Goodbye!");
         let consume_message = || {
-            drop(message); // El compilador aplica move implícito aquí
+            drop(message); // The compiler applies implicit move here
         };
         consume_message();
-        // consume_message(); // ✗ ERROR: no se puede llamar dos veces
+        // consume_message(); // ✗ ERROR: cannot be called twice
     }
 }
 
 /*
 ========================================================================
-IMPL Y DYN DE FAMILIA DE TRAITS
+IMPL AND DYN
 ========================================================================
 
-Cada closure es un tipo único, porque cada tipo incluye las capturas propias. cada uno tiene su tamaño propio.
-
-Cada closure implementa uno o mas traits segun su firma:
-    Fn(Args...) -> Output
-    FnMut(Args...) -> Output
-    FnOnce(Args...) -> Output
-
-es lo que permite usarlos como genericos, en vez de tipo concreto.
-
-Impl: (Monomorfización)
+Impl and Dyn:
 --------------------------------------------
-impl Fn(Args) -> Output
 
-fn fn_param_impl<F: Fn(i32) -> i32>(callback: F) { callback(3); }
-
-fn fn_return_impl() -> impl Fn(i32) -> i32 { return |x: i32| x + 1; } // return unico closure
-
-Dyn: (Para colecciones heterogéneas)
---------------------------------------------
-Box<dyn Fn(Args) -> Output>
-
-fn fn_param_dyn(callback: Box<dyn Fn(i32) -> i32>) { callback(3); }
-
-fn fn_return_dyn() -> Box<dyn Fn(i32) -> i32> {
-    if true {
-        Box::new(|x| x + 1)
-    } else {
-        Box::new(|x| x * 2)
-    }
-}
-
-Puedes mezclar closures diferentes
-Útil para guardar en Vec<Box<dyn Fn...>>
+Since Fn/FnMut/FnOnce are traits, so there are some ways to implement them:
+    - impl Fn... : monomorphization: unique parameters and return for functions
+    - Box<dyn Fn...> : heterogeneous collections of the same trait
+    - &dyn Fn... : dynamic dispatch (reference to a trait object)
 */
 #[cfg(test)]
 mod impl_dyn {
+    /*
+    Impl: (Monomorphization)
+    --------------------------------------------
+        impl Fn(Args) -> Output
 
+        Params:
+            fn fn_param_impl<F: Fn(i32) -> i32>(callback: F) {  // monomorphization
+                callback(3);
+            }
+        Return:
+            fn fn_return_impl() -> impl Fn(i32) -> i32 { 
+                |x: i32| x + 1 // returns a clone of the same type of the closure
+        } 
+     */
     #[test]
     pub fn impl_param() {
         fn fn_param_impl<F: Fn(i32) -> i32>(callback: F) {
@@ -616,6 +660,27 @@ mod impl_dyn {
         assert_eq!(callback(5), 6);
     }
 
+    /*
+    Box Dyn: (For heterogeneous collections)
+    --------------------------------------------
+        Box<dyn Fn(Args) -> Output>
+
+        You can mix different closures
+        Useful for storing in Vec<Box<dyn Fn...>>
+
+        Params:
+            fn fn_param_dyn(callback: Box<dyn Fn(i32) -> i32>) {  // dynamic dispatch
+                callback(3); 
+            }
+        Return:
+            fn fn_return_dyn() -> Box<dyn Fn(i32) -> i32> {  // dynamic dispatch
+                if true {
+                    Box::new(|x| x + 1)
+                } else {
+                    Box::new(|x| x * 2)
+                }
+            }
+     */
     #[test]
     pub fn dyn_param() {
         fn fn_param_dyn(callback: Box<dyn Fn(i32) -> i32>) {
@@ -660,29 +725,66 @@ mod impl_dyn {
 
         assert_eq!((storage.callback)(5), 15);
     }
+
+    /*
+    &dyn: (For heterogeneous collections)
+    --------------------------------------------
+        &dyn Fn(Args) -> Output
+
+        it is a reference to a trait object, has lifetime, it is faster than box<dyn>
+        it is no owned, so it is not possible to store it in a variable, you need to borrow it.
+
+        Params:
+            fn fn_param_dyn(callback: &dyn Fn(i32) -> i32) {  // dynamic dispatch
+                callback(3); 
+            }
+        Return:
+            fn fn_return_dyn() -> &dyn Fn(i32) -> i32 {  // dynamic dispatch
+                if true {
+                    &|x| x + 1
+                } else {
+                    &|x| x * 2
+                }
+            }
+     */
 }
+
+
+/*
+    CLOSURES NOT VARIADIC (FIXED NUMBER OF ARGUMENTS)
+    --------------------------------------------
+        Closures in Rust are NOT VARIADIC:
+        - They always have a fixed signature of arguments and return type
+        - They cannot have optional or default arguments
+        - They cannot have a variable number of arguments (variadic)
+
+        Unlike C++, Rust prioritizes type and memory safety.
+        If you want to pass a variable number of arguments, you can use slices (&[T]),
+        tuples, vectors (Vec<T>), or use macros.
+*/
+mod novariadic_closures {}
 
 #[cfg(test)]
 mod patterns {
 
     /*
-        CLOSURE FACTORIES
-        --------------------------------------------
-        Funciones que retornan closures.
-        - impl Fn: Retorno estático (un solo tipo de closure).
-        - Box<dyn Fn>: Retorno dinámico (permite lógica condicional para elegir el closure).
+    CLOSURE FACTORIES
+    --------------------------------------------
+        Functions that return closures.
+        - impl Fn: Static return (single closure type).
+        - Box<dyn Fn>: Dynamic return (allows conditional logic to choose the closure).
     */
-    mod closure_factories {
+    pub mod closure_factories {
         #[test]
         pub fn closure_factories() {
-            // Factory estática (impl Fn)
+            // Static factory (impl Fn)
             fn create_adder(x: i32) -> impl Fn(i32) -> i32 {
                 move |y| x + y
             }
             let add_5 = create_adder(5);
             assert_eq!(add_5(10), 15);
 
-            // Factory dinámica (Box<dyn Fn>)
+            // Dynamic factory (Box<dyn Fn>)
             fn create_operation(op: &str) -> Box<dyn Fn(i32, i32) -> i32> {
                 match op {
                     "add" => Box::new(|a, b| a + b),
@@ -696,12 +798,12 @@ mod patterns {
     }
 
     /*
-        STRATEGY PATTERN
-        --------------------------------------------
-        Permite inyectar comportamiento (algoritmos) en un struct.
-        El struct define la interfaz (el trait bound) y el closure provee la implementación.
+    STRATEGY PATTERN
+    --------------------------------------------
+        Allows injecting behavior (algorithms) into a struct.
+        The struct defines the interface (the trait bound) and the closure provides the implementation.
     */
-    mod strategy_pattern {
+    pub mod strategy_pattern {
         struct Validator<F>
         where
             F: Fn(&str) -> bool,
@@ -736,21 +838,21 @@ mod patterns {
     }
 
     /*
-        MIDDLEWARE / DECORATORS
-        --------------------------------------------
-        Envolver un closure con otro para añadir funcionalidad transversal
-        (logging, métricas, control de errores) sin modificar la lógica original.
+    MIDDLEWARE / DECORATORS
+    --------------------------------------------
+        Wrap a closure with another to add cross-cutting functionality
+        (logging, metrics, error handling) without modifying the original logic.
     */
-    // Middleware que añade logging a cualquier función/closure
-    mod middleware_pattern {
+    // Middleware that adds logging to any function/closure
+    pub mod middleware_pattern {
         fn with_logging<F, T, R>(func: F) -> impl Fn(T) -> R
         where
             F: Fn(T) -> R,
         {
             move |arg| {
-                println!("LOG: Llamando con argumento...");
+                println!("LOG: Calling with argument...");
                 let result = func(arg);
-                println!("LOG: Llamada finalizada.");
+                println!("LOG: Call finished.");
                 result
             }
         }
@@ -767,12 +869,12 @@ mod patterns {
     }
 
     /*
-        LAZY EVALUATION (Thunks)
-        --------------------------------------------
-        Diferir la ejecución de un código costoso hasta que el resultado sea necesario.
-        Se usa un closure como "receta" para generar el valor bajo demanda.
+    LAZY EVALUATION (Thunks)
+    --------------------------------------------
+        Defer the execution of expensive code until the result is needed.
+        A closure is used as a "recipe" to generate the value on demand.
     */
-    mod lazy_evaluation {
+    pub mod lazy_evaluation {
         struct Lazy<T, F>
         where
             F: Fn() -> T,
@@ -805,24 +907,27 @@ mod patterns {
             println!("  ✅ lazy_evaluation::lazy_evaluation");
 
             let mut expensive_value = Lazy::new(|| {
-                println!("Calculando valor costoso...");
+                println!("Calculating expensive value...");
                 42
             });
 
-            // El primer acceso dispara el cálculo
+            // First access triggers the calculation
             assert_eq!(*expensive_value.get(), 42);
-            // El segundo acceso usa el valor cacheado
+            // Second access uses the cached value
             assert_eq!(*expensive_value.get(), 42);
         }
     }
 
     /*
-        EVENT LISTENERS / OBSERVER PATTERN
-        --------------------------------------------
-        Almacenar múltiples callbacks para ser ejecutados ante un evento.
-        Requiere `Box<dyn FnMut>` para permitir que los listeners modifiquen su propio estado.
+    EVENT LISTENERS / OBSERVER PATTERN
+    --------------------------------------------
+        Store multiple callbacks to be executed on an event.
+        Requires `Box<dyn FnMut>` to allow listeners to modify their own state.
     */
-    mod event_listeners {
+    pub mod event_listeners {
+        use std::rc::Rc;
+        use std::cell::RefCell;
+
         struct EventEmitter {
             listeners: Vec<Box<dyn FnMut(&str)>>,
         }
@@ -852,22 +957,33 @@ mod patterns {
         pub fn event_listeners() {
             println!("  ✅ event_listeners::event_listeners");
             let mut emitter = EventEmitter::new();
-            let mut count = 0;
+            
+            // Use Rc<RefCell<i32>> to share mutable state across closures
+            let count = Rc::new(RefCell::new(0));
 
-            emitter.on(move |ev| println!("Evento recibido: {}", ev));
-            emitter.on(move |_| count += 1); // Captura y modifica estado
+            // First listener: prints the event
+            emitter.on(move |ev| println!("Event received: {}", ev));
+            
+            // Second listener: captures and modifies count
+            let count_clone = count.clone();
+            emitter.on(move |_| {
+                *count_clone.borrow_mut() += 1;
+            });
 
             emitter.emit("click");
             emitter.emit("hover");
+            
+            // Print final count
+            println!("Total events: {}", count.borrow());
         }
     }
 
     /*
-        STATEFUL CLOSURES (Encapsulación de estado)
-        --------------------------------------------
-        Usar un closure para crear un objeto con estado privado sin definir un struct.
+    STATEFUL CLOSURES (State encapsulation)
+    --------------------------------------------
+        Use a closure to create an object with private state without defining a struct.
     */
-    mod stateful_closures {
+    pub mod stateful_closures {
         fn create_counter(start: i32) -> impl FnMut() -> i32 {
             let mut count = start;
             move || {
@@ -891,19 +1007,19 @@ mod patterns {
     }
 
     /*
-        CURRYING / PARTIAL APPLICATION
-        --------------------------------------------
-        Transformar una función de N argumentos en una cadena de funciones de 1 argumento.
+    CURRYING / PARTIAL APPLICATION
+    --------------------------------------------
+        Transform a function of N arguments into a chain of functions of 1 argument.
     */
-    mod currying_partial_application {
+    pub mod currying_partial_application {
         #[test]
         pub fn currying_partial_application() {
             println!("  ✅ currying_partial_application::currying_partial_application");
 
-            // Función currificada
+            // Curried function
             let add = |x| move |y| x + y;
 
-            let add_ten = add(10); // Aplicación parcial
+            let add_ten = add(10); // Partial application
             let result = add_ten(5);
 
             assert_eq!(result, 15);

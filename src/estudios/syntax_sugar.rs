@@ -1,20 +1,20 @@
-//! # Syntax Sugar en Rust
+//! # Syntax Sugar in Rust
 //!
-//! Syntax sugar = sintaxis más corta/legible que el compilador expande
-//! a código más explícito.
+//! Syntax sugar = shorter/more readable syntax that the compiler expands
+//! to more explicit code.
 //!
-//! ## Ejecutar tests
+//! ## Run tests
 //! ```bash
 //! cargo test --bin 0_syntax_sugar -- --nocapture
-//! cargo test --bin 0_syntax_sugar indice -- --nocapture
+//! cargo test --bin 0_syntax_sugar index -- --nocapture
 //! ```
 
 // ============================================================================
-// ÍNDICE - Ejecuta todas las demos
+// INDEX - Run all demos
 // ============================================================================
 
 #[test]
-fn indice() {
+fn index() {
     deref_coercion::deref_coercion();
     method_call::method_call();
     operators::operators();
@@ -30,11 +30,11 @@ fn indice() {
     async_await::async_await();
     derive_macros::derive_macros();
 
-    println!("\n✅ Todos los tests ejecutados\n");
+    println!("\n✅ All tests executed\n");
 }
 
 // ============================================================================
-// 1. DEREF COERCION (Auto-dereferenciación)
+// 1. DEREF COERCION (Auto-dereferencing)
 // ============================================================================
 //
 //     ┌──────────────────────────────────────────────────────────────┐
@@ -55,7 +55,7 @@ mod deref_coercion {
         let r: &String = &s;
         let rr: &&String = &&s;
 
-        // Tú escribes:           El compilador hace:
+        // You write:             The compiler does:
         // r.len()                (*r).len()
         // rr.len()               (**rr).len()
         assert_eq!(r.len(), 5);
@@ -64,7 +64,7 @@ mod deref_coercion {
 }
 
 // ============================================================================
-// 2. METHOD CALL (Llamada a métodos)
+// 2. METHOD CALL (Method calls)
 // ============================================================================
 //
 //  METHOD CALL SYNTAX
@@ -78,7 +78,7 @@ mod deref_coercion {
 //    value.method()   -> Type::method(&mut value)         (auto-borrow mut)
 //
 //  .method(self):
-//    value.method()   -> Type::method(value)              (sin cambios)
+//    value.method()   -> Type::method(value)              (no changes)
 //  ══════════════════════════════════════════════════════════════════
 
 #[cfg(test)]
@@ -109,22 +109,22 @@ mod method_call {
         let r = &p;
         let rr = &r;
 
-        // &self: auto-deref y auto-borrow
+        // &self: auto-deref and auto-borrow
         assert_eq!(p.distance(), 5.0);
         assert_eq!(r.distance(), 5.0);
         assert_eq!(rr.distance(), 5.0);
 
-        // &mut self: modificación in-place
+        // &mut self: in-place modification
         let mut p2 = Point { x: 1, y: 1 };
         p2.move_by(2, 3);
         assert_eq!(p2.x, 3);
         assert_eq!(p2.y, 4);
 
-        // self: consumo del valor
+        // self: value consumption
         let p3 = Point { x: 5, y: 12 };
         let result = p3.consume();
         assert_eq!(result, "Point(5, 12)");
-        // p3 ya no existe
+        // p3 no longer exists
 
         println!("  ✅ method_call::method_call");
     }
@@ -164,7 +164,7 @@ mod operators {
         let a = 5;
         let b = 3;
 
-        // Aritméticos → traits en std::ops
+        // Arithmetic → traits in std::ops
         assert_eq!(a + b, Add::add(a, b));
         assert_eq!(a + b, 8);
         assert_eq!(a - b, 2);
@@ -172,13 +172,13 @@ mod operators {
         assert_eq!(a / b, 1);
         assert_eq!(a % b, 2);
 
-        // Comparación → PartialEq, PartialOrd
+        // Comparison → PartialEq, PartialOrd
         assert_eq!(a == b, std::cmp::PartialEq::eq(&a, &b));
         assert!(!std::cmp::PartialEq::eq(&a, &b));
         assert!(a > b);
         assert!(b < a);
 
-        // Negación
+        // Negation
         assert_eq!(-a, -5);
         assert!(!false);
 
@@ -187,11 +187,11 @@ mod operators {
 }
 
 // ============================================================================
-// 5. LOOPS (Bucles)
+// 5. LOOPS (Loops)
 // ============================================================================
 //
-// formas abreviadas de llamar a metodos .iter(), .iter_mut(), .into_iter()
-// collection puede ser cualquier tipo que implemente esos metodos o alguno
+// Abbreviated forms to call .iter(), .iter_mut(), .into_iter() methods
+// collection can be any type that implements these methods or one of them
 //
 //     ┌──────────────────────────────────────────────────────────────┐
 //     │ FOR LOOP                                                     │
@@ -214,9 +214,9 @@ mod operators {
 mod loops {
     #[test]
     pub fn loops() {
-        let mut v = vec![1, 2, 3];
+        let v = vec![1, 2, 3];
 
-        // for x in &v equivale a for x in v.iter()
+        // for x in &v is equivalent to for x in v.iter()
         let mut sum1 = 0;
         for x in &v {
             sum1 += x;
@@ -230,17 +230,17 @@ mod loops {
         assert_eq!(sum1, 6);
         assert_eq!(sum2, 6);
 
-        // for x in v consume el vector (into_iter)
+        // for x in v consumes the vector (into_iter)
         let v2 = vec![1, 2, 3];
         let mut sum3 = 0;
         for x in v2 {
             // v2.into_iter()
             sum3 += x;
         }
-        // v2 ya no es válido
+        // v2 is no longer valid
         assert_eq!(sum3, 6);
 
-        // for x in &mut v permite modificar
+        // for x in &mut v allows modification
         let mut v3 = vec![1, 2, 3];
         for x in &mut v3 {
             *x *= 2;
@@ -265,7 +265,7 @@ mod loops {
 //     │        Err(e) => return Err(e.into()),                       │
 //     │    };                                                        │
 //     │                                                              │
-//     │ Para Option:                                                 │
+//     │ For Option:                                                 │
 //     │ →  let x = match expr {                                      │
 //     │        Some(v) => v,                                         │
 //     │        None => return None,                                  │
@@ -299,7 +299,7 @@ mod question_mark {
         assert_eq!(with_sugar(false), Err("failed"));
         assert_eq!(without_sugar(false), Err("failed"));
 
-        // También funciona con Option
+        // Also works with Option
         fn option_chain(x: Option<i32>) -> Option<i32> {
             let v = x?;
             Some(v * 2)
@@ -330,15 +330,15 @@ mod question_mark {
 mod range_syntax {
     #[test]
     pub fn range_syntax() {
-        // 0..5 = Range { start: 0, end: 5 } (exclusivo)
+        // 0..5 = Range { start: 0, end: 5 } (exclusive)
         let r1: Vec<i32> = (0..5).collect();
         assert_eq!(r1, vec![0, 1, 2, 3, 4]);
 
-        // 0..=5 = RangeInclusive (inclusivo)
+        // 0..=5 = RangeInclusive (inclusive)
         let r2: Vec<i32> = (0..=5).collect();
         assert_eq!(r2, vec![0, 1, 2, 3, 4, 5]);
 
-        // Slicing con ranges
+        // Slicing with ranges
         let arr = [0, 1, 2, 3, 4, 5];
         assert_eq!(&arr[1..4], &[1, 2, 3]);
         assert_eq!(&arr[..3], &[0, 1, 2]);
@@ -377,7 +377,7 @@ mod indexing {
         assert_eq!(arr[0], 1);
         assert_eq!(<[i32] as Index<usize>>::index(&arr, 0), &1);
 
-        // arr[i] = v usa IndexMut
+        // arr[i] = v uses IndexMut
         v[0] = 10;
         assert_eq!(v[0], 10);
 
@@ -402,11 +402,11 @@ mod indexing {
 //     │    }                                                         │
 //     │    impl Fn/FnMut/FnOnce for __AnonymousClosure { ... }      │
 //     │                                                              │
-//     │ move |args| expr  →  captura por valor (ownership)           │
+//     │ move |args| expr  →  captures by value (ownership)           │
 //     └──────────────────────────────────────────────────────────────┘
 //
-//     El compilador genera un struct anónimo que captura las variables
-//     del entorno e implementa Fn, FnMut, o FnOnce según cómo las use.
+//     The compiler generates an anonymous struct that captures the variables
+//     from the environment and implements Fn, FnMut, or FnOnce depending on usage.
 
 #[cfg(test)]
 mod closures {
@@ -414,23 +414,23 @@ mod closures {
     pub fn closures() {
         let x = 5;
 
-        // Captura x por referencia (impl Fn)
+        // Captures x by reference (impl Fn)
         let add = |a| a + x;
         assert_eq!(add(3), 8);
-        assert_eq!(x, 5); // x sigue válido
+        assert_eq!(x, 5); // x is still valid
 
-        // Captura mutable (impl FnMut)
+        // Mutable capture (impl FnMut)
         let mut count = 0;
         let mut increment = || count += 1;
         increment();
         increment();
         assert_eq!(count, 2);
 
-        // move: captura por valor (impl FnOnce o Fn si Copy)
+        // move: captures by value (impl FnOnce or Fn if Copy)
         let s = String::from("hello");
         let consume = move || s.len();
         assert_eq!(consume(), 5);
-        // s ya no es válido
+        // s is no longer valid
 
         println!("  ✅ closures::closures");
     }
@@ -444,10 +444,10 @@ mod closures {
 //     │ FORMAT MACROS                                                │
 //     ├──────────────────────────────────────────────────────────────┤
 //     │ println!("{}", x)  →  print + newline                        │
-//     │ print!("{}", x)    →  print sin newline                      │
-//     │ format!("{}", x)   →  retorna String                         │
-//     │ write!(w, "{}", x) →  escribe a writer                       │
-//     │ panic!("{}", x)    →  panic con mensaje                      │
+//     │ print!("{}", x)    →  print without newline                  │
+//     │ format!("{}", x)   →  returns String                         │
+//     │ write!(w, "{}", x) →  writes to writer                       │
+//     │ panic!("{}", x)    →  panic with message                     │
 //     │                                                              │
 //     │ Placeholders:                                                │
 //     │ {}      →  Display                                           │
@@ -466,11 +466,11 @@ mod format_macros {
         let name = "world";
         let num = 42;
 
-        // format! retorna String
+        // format! returns String
         let s = format!("Hello, {}!", name);
         assert_eq!(s, "Hello, world!");
 
-        // Diferentes formatos
+        // Different formats
         let debug = format!("{:?}", vec![1, 2, 3]);
         assert_eq!(debug, "[1, 2, 3]");
 
@@ -483,7 +483,7 @@ mod format_macros {
         let hex_upper = format!("{:X}", num);
         assert_eq!(hex_upper, "2A");
 
-        // Padding y alineación
+        // Padding and alignment
         let padded = format!("{:>5}", 42);
         assert_eq!(padded, "   42");
 
@@ -504,10 +504,10 @@ mod format_macros {
 //     │ Config { name, value }  →  Config { name: name, value: v }  │
 //     │                             (field init shorthand)           │
 //     │                                                              │
-//     │ Config { x: 1, ..other } →  copia campos restantes de other │
+//     │ Config { x: 1, ..other } →  copies remaining fields from other
 //     │                             (struct update syntax)           │
 //     │                                                              │
-//     │ let Config { name, .. }  →  destructure, ignora otros        │
+//     │ let Config { name, .. }  →  destructure, ignore others       │
 //     └──────────────────────────────────────────────────────────────┘
 
 #[cfg(test)]
@@ -524,7 +524,7 @@ mod struct_init {
         let name = String::from("test");
         let value = 42;
 
-        // Field init shorthand: name en vez de name: name
+        // Field init shorthand: name instead of name: name
         let c1 = Config {
             name,  // = name: name
             value, // = value: value
@@ -533,7 +533,7 @@ mod struct_init {
         assert_eq!(c1.name, "test");
         assert_eq!(c1.value, 42);
 
-        // Struct update syntax: ..other copia campos restantes
+        // Struct update syntax: ..other copies remaining fields
         let c2 = Config {
             value: 100,
             ..c1.clone()
@@ -542,7 +542,7 @@ mod struct_init {
         assert_eq!(c2.value, 100);
         assert!(c2.enabled);
 
-        // Destructuring con ..
+        // Destructuring with ..
         let Config { name, .. } = c1;
         assert_eq!(name, "test");
 
@@ -576,7 +576,7 @@ mod pattern_matching {
     pub fn pattern_matching() {
         let opt: Option<i32> = Some(42);
 
-        // if let es sugar para match con un brazo
+        // if let is sugar for match with one arm
         let result = if let Some(x) = opt { x } else { 0 };
         assert_eq!(result, 42);
 
@@ -614,26 +614,26 @@ mod pattern_matching {
 //     │ IMPL TRAIT                                                   │
 //     ├──────────────────────────────────────────────────────────────┤
 //     │ fn foo(x: impl Trait)       →  fn foo<T: Trait>(x: T)        │
-//     │                                (sugar para generics)         │
+//     │                                (sugar for generics)          │
 //     │                                                              │
-//     │ fn foo() -> impl Trait      →  retorna tipo concreto anónimo │
-//     │                                que implementa Trait          │
-//     │                                (no es dyn, es estático)      │
+//     │ fn foo() -> impl Trait      →  returns anonymous concrete type
+//     │                                that implements Trait         │
+//     │                                (not dyn, is static)          │
 //     └──────────────────────────────────────────────────────────────┘
 
 #[cfg(test)]
 mod impl_trait {
-    // En parámetros: sugar para generics
+    // In parameters: sugar for generics
     fn print_iter(iter: impl Iterator<Item = i32>) -> Vec<i32> {
         iter.collect()
     }
 
-    // Equivalente explícito con generics
+    // Explicit equivalent with generics
     fn _print_iter_generic<I: Iterator<Item = i32>>(iter: I) -> Vec<i32> {
         iter.collect()
     }
 
-    // En retorno: oculta el tipo concreto
+    // In return: hides the concrete type
     fn make_iter() -> impl Iterator<Item = i32> {
         vec![1, 2, 3].into_iter()
     }
@@ -643,7 +643,7 @@ mod impl_trait {
         let result = print_iter(make_iter());
         assert_eq!(result, vec![1, 2, 3]);
 
-        // impl Trait en retorno es útil para closures
+        // impl Trait in return is useful for closures
         fn make_adder(x: i32) -> impl Fn(i32) -> i32 {
             move |y| x + y
         }
@@ -665,7 +665,7 @@ mod impl_trait {
 //     │ →  fn foo() -> impl Future<Output = T>                       │
 //     │                                                              │
 //     │ async { expr }                                               │
-//     │ →  genera struct anónimo que impl Future                     │
+//     │ →  generates anonymous struct that impl Future               │
 //     │                                                              │
 //     │ future.await                                                 │
 //     │ →  loop { match future.poll(cx) {                            │
@@ -678,26 +678,26 @@ mod impl_trait {
 mod async_await {
     use std::future::Future;
 
-    // async fn es sugar para retornar impl Future
+    // async fn is sugar for returning impl Future
     async fn fetch_data() -> i32 {
         42
     }
 
-    // Equivalente conceptual:
+    // Conceptual equivalent:
     fn _fetch_data_expanded() -> impl Future<Output = i32> {
         async { 42 }
     }
 
     #[test]
     pub fn async_await() {
-        // async fn retorna un Future, no ejecuta nada hasta .await
+        // async fn returns a Future, doesn't execute anything until .await
         let future = fetch_data();
 
-        // El Future existe como un tipo
+        // The Future exists as a type
         let _ = std::mem::size_of_val(&future);
 
-        // .await es sugar para poll loop
-        // No ejecutamos porque necesitaríamos un runtime
+        // .await is sugar for poll loop
+        // We don't execute because we would need a runtime
 
         drop(future);
 
@@ -723,7 +723,7 @@ mod async_await {
 //     │ #[derive(Ord)]         →  impl Ord for Type { ... }         │
 //     └──────────────────────────────────────────────────────────────┘
 //
-//     Los derives generan implementaciones automáticas de traits.
+//     Derives generate automatic implementations of traits.
 
 #[cfg(test)]
 mod derive_macros {
@@ -742,9 +742,9 @@ mod derive_macros {
         assert!(debug.contains("Point"));
         assert!(debug.contains("x: 1"));
 
-        // Clone y Copy
+        // Clone and Copy
         let p2 = p.clone();
-        let p3 = p; // Copy, no move
+        let p3 = p; // Copy, not move
         assert_eq!(p, p2);
         assert_eq!(p, p3);
 
@@ -756,7 +756,7 @@ mod derive_macros {
         let default = Point::default();
         assert_eq!(default, Point { x: 0, y: 0 });
 
-        // Hash (permite usar en HashSet/HashMap)
+        // Hash (allows use in HashSet/HashMap)
         use std::collections::HashSet;
         let mut set = HashSet::new();
         set.insert(p);
@@ -767,11 +767,11 @@ mod derive_macros {
 }
 
 // ============================================================================
-// TABLA RESUMEN
+// SUMMARY TABLE
 // ============================================================================
 //
 //     ┌───────────────────┬──────────────────────────────────────────────────────┐
-//     │ SUGAR             │ SE EXPANDE A                                         │
+//     │ SUGAR             │ EXPANDS TO                                           │
 //     ├───────────────────┼──────────────────────────────────────────────────────┤
 //     │ ref.field         │ (*ref).field                                         │
 //     │ ref.method()      │ Type::method(&ref) / (&*ref).method()                │
@@ -781,12 +781,12 @@ mod derive_macros {
 //     │ for x in coll     │ for x in coll.into_iter()                            │
 //     │ expr?             │ match expr { Ok(v)=>v, Err(e)=>return Err(e) }      │
 //     │ 0..5              │ Range { start: 0, end: 5 }                          │
-//     │ |x| expr          │ struct anónimo + impl Fn/FnMut/FnOnce                │
+//     │ |x| expr          │ anonymous struct + impl Fn/FnMut/FnOnce              │
 //     │ S { field }       │ S { field: field }                                  │
-//     │ S { ..other }     │ copia campos restantes de other                      │
+//     │ S { ..other }     │ copies remaining fields from other                   │
 //     │ if let P = e {}   │ match e { P => {}, _ => () }                        │
 //     │ impl Trait        │ <T: Trait>                                           │
 //     │ async fn -> T     │ fn -> impl Future<Output=T>                          │
-//     │ fut.await         │ poll loop hasta Ready                                │
+//     │ fut.await         │ poll loop until Ready                                │
 //     │ #[derive(X)]      │ impl X for Type { ... }                             │
 //     └───────────────────┴──────────────────────────────────────────────────────┘

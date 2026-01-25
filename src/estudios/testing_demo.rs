@@ -1,15 +1,15 @@
 //! ============================================================================
-//!                    TESTING EN RUST - GUÍA COMPLETA
+//!                    TESTING IN RUST - COMPLETE GUIDE
 //! ============================================================================
 //!
 //! ```text
 //! ┌─────────────────────────────────────────────────────────────────────────┐
-//!                     PIRÁMIDE DE TESTING EN RUST                          
+//!                     RUST TESTING PYRAMID                          
 //! ├─────────────────────────────────────────────────────────────────────────┤
 //!                                                                          
 //!                            ╱╲                                            
 //!                           ╱  ╲       E2E Tests                           
-//!                          ╱ 🔺 ╲      (integración completa)              
+//!                          ╱ 🔺 ╲      (complete integration)              
 //!                         ╱──────╲                                         
 //!                        ╱        ╲                                        
 //!                       ╱   🔶    ╲    Integration Tests                   
@@ -17,13 +17,13 @@
 //!                     ╱─────────────╲                                      
 //!                    ╱               ╲                                     
 //!                   ╱    🟢 Unit     ╲  Unit Tests                         
-//!                  ╱    Tests        ╲  (#[test], rápidos)                 
+//!                  ╱    Tests        ╲  (#[test], fast)                 
 //!                 ╱───────────────────╲                                    
 //!                ╱                     ╲                                   
 //!               ╱   📊 Property-Based   ╲  Proptest/Quickcheck             
 //!              ╱─────────────────────────╲                                 
 //!                                                                          
-//!   Más rápidos ◄─────────────────────────────────────► Más cobertura     
+//!   Faster ◄─────────────────────────────────────► Better coverage     
 //!                                                                          
 //! ─────────────────────────────────────────────────────────────────────────
 //! ```
@@ -79,12 +79,12 @@ mod section_1_domain_logic {
     }
 
     // ============================================================================
-    //                      1.2 REPOSITORY TRAIT (para mocking)
+    //                      1.2 REPOSITORY TRAIT (for mocking)
     // ============================================================================
 
     // ```text
     // ┌─────────────────────────────────────────────────────────────────────────┐
-    //   PATRÓN REPOSITORY - Abstracción para testing
+    //   REPOSITORY PATTERN - Abstraction for testing
     // ├─────────────────────────────────────────────────────────────────────────┤
     //
     //                     trait UserRepository
@@ -102,8 +102,8 @@ mod section_1_domain_logic {
     //         (prod)        (tests)        (dev)
     //      └────────────┘   └────────────┘   └────────────┘
     //
-    //   ✅ UserService depende del TRAIT, no de implementación concreta
-    //   ✅ En tests inyectamos MockRepo → tests rápidos, sin DB real
+    //   ✅ UserService depends on TRAIT, not concrete implementation
+    //   ✅ In tests we inject MockRepo → fast tests, no real DB
     //
     // ─────────────────────────────────────────────────────────────────────────
     // ```
@@ -116,7 +116,7 @@ mod section_1_domain_logic {
     #[derive(Debug, PartialEq)]
     pub enum RepoError {
         NotFound,
-        DatabaseError,
+        _DatabaseError,
     }
 
     // ============================================================================
@@ -149,68 +149,68 @@ mod section_1_domain_logic {
     }
 
     // ============================================================================
-    //                       1.4 FUNCIONES AUXILIARES
+    //                       1.4 HELPER FUNCTIONS
     // ============================================================================
 
-    // Operación que puede fallar (para demostrar testing de Result)
+    // Operation that can fail (to demonstrate Result testing)
     pub fn divide(a: i32, b: i32) -> Result<i32, String> {
         if b == 0 {
-            Err("Division por cero".to_string())
+            Err("Division by zero".to_string())
         } else {
             Ok(a / b)
         }
     }
 
-    // Operación que paniquea (para demostrar #[should_panic])
+    // Operation that panics (to demonstrate #[should_panic])
     pub fn panic_if_negative(n: i32) {
         if n < 0 {
-            panic!("No se aceptan negativos");
+            panic!("Negative values not accepted");
         }
     }
 
-    // Para property testing: reverse de string
+    // For property testing: string reverse
     pub fn reverse_string(s: &str) -> String {
         s.chars().rev().collect()
     }
 
-    // Para property testing: suma simple con wrapping para evitar overflow
+    // For property testing: simple addition with wrapping to avoid overflow
     pub fn add(a: i32, b: i32) -> i32 {
         a.wrapping_add(b)
     }
 }
 
 // ╔══════════════════════════════════════════════════════════════════════════╗
-// ║                    PARTE 2: TESTS UNITARIOS                              ║
+// ║                    PART 2: UNIT TESTS                              ║
 // ╚══════════════════════════════════════════════════════════════════════════╝
 
 // ```text
 // ┌─────────────────────────────────────────────────────────────────────────┐
-//   ANATOMÍA DE UN TEST EN RUST
+//   ANATOMY OF A TEST IN RUST
 // ├─────────────────────────────────────────────────────────────────────────┤
 //
-//   #[cfg(test)]              ← Solo compila en modo test
+//   #[cfg(test)]              ← Compiles only in test mode
 //   mod tests {
-//       use super::*;         ← Importa del módulo padre
+//       use super::*;         ← Import from parent module
 //
-//       #[test]               ← Marca la función como test
+//       #[test]               ← Mark function as test
 //       fn test_name() {
-//           // Arrange        ← Preparar datos
+//           // Arrange        ← Prepare data
 //           let input = ...;
 //
-//           // Act            ← Ejecutar
+//           // Act            ← Execute
 //           let result = function(input);
 //
-//           // Assert         ← Verificar
+//           // Assert         ← Verify
 //           assert_eq!(result, expected);
 //       }
 //   }
 //
-//   MACROS DE ASERCIÓN:
-//   ───────────────────
-//   assert!(condition)           → Verifica que sea true
-//   assert_eq!(a, b)             → Verifica a == b
-//   assert_ne!(a, b)             → Verifica a != b
-//   assert!(cond, "msg {}", x)   → Con mensaje personalizado
+//   ASSERTION MACROS:
+//   ─────────────────
+//   assert!(condition)           → Verifies it's true
+//   assert_eq!(a, b)             → Verifies a == b
+//   assert_ne!(a, b)             → Verifies a != b
+//   assert!(cond, "msg {}", x)   → With custom message
 //
 // ─────────────────────────────────────────────────────────────────────────
 // ```
@@ -220,17 +220,17 @@ mod section_2_unit_tests {
     use std::cell::RefCell;
 
     // ========================================================================
-    //                    2.1 UNIT TESTS BÁSICOS
+    //                    2.1 BASIC UNIT TESTS
     // ========================================================================
 
     // ```text
     // ┌─────────────────────────────────────────────────────────────────────┐
-    //   UNIT TESTS BÁSICOS
-    //   ───────────────────
-    //   • Verifican una sola cosa
-    //   • Nombre descriptivo: test_<qué>_<cuándo>_<resultado_esperado>
-    //   • Rápidos (< 1ms)
-    //   • Sin dependencias externas
+    //   BASIC UNIT TESTS
+    //   ────────────────
+    //   • Verify one thing
+    //   • Descriptive naming: test_<what>_<when>_<expected_result>
+    //   • Fast (< 1ms)
+    //   • No external dependencies
     // └─────────────────────────────────────────────────────────────────────┘
     // ```
     #[test]
@@ -281,17 +281,17 @@ mod section_2_unit_tests {
     }
 
     // ========================================================================
-    //                    2.2 FIXTURES Y HELPERS
+    //                    2.2 FIXTURES AND HELPERS
     // ========================================================================
 
     // ```text
     // ┌─────────────────────────────────────────────────────────────────────┐
-    //   FIXTURES Y HELPERS
-    //   ─────────────────────
-    //   • Funciones auxiliares para crear datos de test
-    //   • Reducen duplicación
-    //   • Hacen tests más legibles
-    //   • Nombre: create_valid_X, build_X, make_X
+    //   FIXTURES AND HELPERS
+    //   ────────────────────
+    //   • Helper functions to create test data
+    //   • Reduce duplication
+    //   • Make tests more readable
+    //   • Naming: create_valid_X, build_X, make_X
     // └─────────────────────────────────────────────────────────────────────┘
     // ```
     fn create_valid_user(id: u64) -> User {
@@ -308,13 +308,13 @@ mod section_2_unit_tests {
     }
 
     // ========================================================================
-    //                    2.3 TESTS PARAMÉTRICOS
+    //                    2.3 PARAMETRIC TESTS
     // ========================================================================
 
     // ```text
     // ┌─────────────────────────────────────────────────────────────────────┐
-    //   TESTS PARAMÉTRICOS (Data-Driven)
-    //   ─────────────────────────────────
+    //   PARAMETRIC TESTS (Data-Driven)
+    //   ──────────────────────────────
     //
     //   let cases = vec![
     //       (input1, expected1),
@@ -326,9 +326,9 @@ mod section_2_unit_tests {
     //       assert_eq!(function(input), expected, "msg: {}", input);
     //   }
     //
-    //   ✅ Un test, múltiples casos
-    //   ✅ Fácil agregar nuevos casos
-    //   ✅ Mensaje claro cuando falla
+    //   ✅ One test, multiple cases
+    //   ✅ Easy to add new cases
+    //   ✅ Clear message when it fails
     // └─────────────────────────────────────────────────────────────────────┘
     // ```
     #[test]
@@ -353,30 +353,30 @@ mod section_2_unit_tests {
     }
 
     // ========================================================================
-    //                    2.4 MOCKING CON TRAITS
+    //                    2.4 MOCKING WITH TRAITS
     // ========================================================================
 
     // ```text
     // ┌─────────────────────────────────────────────────────────────────────┐
-    //   MOCKING CON TRAITS
-    //   ─────────────────────
+    //   MOCKING WITH TRAITS
+    //   ───────────────────
     //
-    //   1. Define trait para la dependencia
+    //   1. Define trait for the dependency
     //      trait UserRepository { fn find(&self, id) -> ... }
     //
-    //   2. Service depende del trait, no de implementación
+    //   2. Service depends on trait, not implementation
     //      struct UserService<R: UserRepository> { repo: R }
     //
-    //   3. En tests: crea MockRepository
+    //   3. In tests: create MockRepository
     //      struct MockUserRepository { users: Vec<User> }
     //      impl UserRepository for MockUserRepository { ... }
     //
-    //   4. Inyecta el mock en el service
+    //   4. Inject the mock into the service
     //      let service = UserService::new(MockUserRepository::new());
     //
-    //   ✅ Tests rápidos (sin I/O)
-    //   ✅ Tests determinísticos
-    //   ✅ Puedes simular errores fácilmente
+    //   ✅ Fast tests (no I/O)
+    //   ✅ Deterministic tests
+    //   ✅ Easy to simulate errors
     // └─────────────────────────────────────────────────────────────────────┘
     // ```
 
@@ -420,7 +420,7 @@ mod section_2_unit_tests {
 
     #[test]
     pub fn service_finds_existing_user() {
-        // Arrange: mock con usuario precargado
+        // Arrange: mock with pre-loaded user
         let user = create_valid_user(1);
         let repo = MockUserRepository::with_users(vec![user.clone()]);
         let service = UserService::new(repo);
@@ -460,13 +460,13 @@ mod section_2_unit_tests {
     }
 
     // ========================================================================
-    //                    2.5 TESTS DE ERRORES Y PANICS
+    //                    2.5 ERROR AND PANIC TESTING
     // ========================================================================
 
     // ```text
     // ┌─────────────────────────────────────────────────────────────────────┐
-    //   TESTING DE ERRORES Y PANICS
-    //   ───────────────────────────
+    //   TESTING ERRORS AND PANICS
+    //   ──────────────────────────
     //
     //   RESULT<T, E>:
     //   ─────────────
@@ -477,11 +477,11 @@ mod section_2_unit_tests {
     //   PANICS:
     //   ───────
     //   #[test]
-    //   #[should_panic]                     ← Espera cualquier panic
+    //   #[should_panic]                     ← Expects any panic
     //   fn test_panics() { ... }
     //
     //   #[test]
-    //   #[should_panic(expected = "msg")]   ← Espera panic con mensaje
+    //   #[should_panic(expected = "msg")]   ← Expects panic with message
     //   fn test_panics_with_msg() { ... }
     //
     // └─────────────────────────────────────────────────────────────────────┘
@@ -497,48 +497,48 @@ mod section_2_unit_tests {
         let result = divide(10, 0);
 
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err(), "Division por cero");
+        assert_eq!(result.unwrap_err(), "Division by zero");
     }
 
     #[test]
-    #[should_panic(expected = "No se aceptan negativos")]
+    #[should_panic(expected = "Negative values not accepted")]
     pub fn panic_if_negative_panics_correctly() {
         panic_if_negative(-5);
     }
 
     #[test]
     pub fn panic_if_negative_does_not_panic_with_positive() {
-        panic_if_negative(10); // No debe paniquear
+        panic_if_negative(10); // Should not panic
     }
 
     // ========================================================================
-    //                 2.6 PROPERTY-BASED TESTING MANUAL
+    //                 2.6 MANUAL PROPERTY-BASED TESTING
     // ========================================================================
 
     // ```text
     // ┌─────────────────────────────────────────────────────────────────────┐
     //   PROPERTY-BASED TESTING
-    //   ───────────────────────
+    //   ──────────────────────
     //
-    //   En vez de: "input X produce output Y"
-    //   Verificas: "para CUALQUIER input válido, se cumple PROPIEDAD"
+    //   Instead of: "input X produces output Y"
+    //   You verify: "for ANY valid input, PROPERTY holds"
     //
-    //   PROPIEDADES COMUNES:
-    //   ─────────────────────
-    //   • Idempotencia:  f(f(x)) == f(x)     (sort, normalize)
-    //   • Inversión:     f⁻¹(f(x)) == x     (encode/decode, reverse)
-    //   • Conmutatividad: f(a,b) == f(b,a)  (add, max)
-    //   • Asociatividad: f(f(a,b),c) == f(a,f(b,c))
-    //   • Identidad:     f(x, id) == x      (add 0, multiply 1)
+    //   COMMON PROPERTIES:
+    //   ──────────────────
+    //   • Idempotence:  f(f(x)) == f(x)     (sort, normalize)
+    //   • Inversion:    f⁻¹(f(x)) == x     (encode/decode, reverse)
+    //   • Commutativity: f(a,b) == f(b,a)  (add, max)
+    //   • Associativity: f(f(a,b),c) == f(a,f(b,c))
+    //   • Identity:     f(x, id) == x      (add 0, multiply 1)
     //
-    //   MANUAL: iteramos sobre casos representativos
-    //   AUTOMÁTICO: proptest genera miles de casos aleatorios
+    //   MANUAL: iterate over representative cases
+    //   AUTOMATIC: proptest generates thousands of random cases
     //
     // └─────────────────────────────────────────────────────────────────────┘
     // ```
     #[test]
     pub fn reversing_string_twice_returns_original() {
-        // Propiedad: reverse(reverse(s)) == s (inversión)
+        // Property: reverse(reverse(s)) == s (inversion)
         let test_cases = vec!["hello", "rust", "12345", "a", "", "🦀"];
 
         for original in test_cases {
@@ -550,7 +550,7 @@ mod section_2_unit_tests {
 
     #[test]
     pub fn adding_zero_returns_same_number() {
-        // Propiedad: a + 0 == a (identidad aditiva)
+        // Property: a + 0 == a (additive identity)
         for n in -100..100 {
             assert_eq!(add(n, 0), n);
             assert_eq!(add(0, n), n);
@@ -559,7 +559,7 @@ mod section_2_unit_tests {
 
     #[test]
     pub fn addition_is_commutative() {
-        // Propiedad: a + b == b + a (conmutatividad)
+        // Property: a + b == b + a (commutativity)
         let pairs = vec![(1, 2), (5, 10), (-3, 7), (0, 0), (i32::MAX, 0)];
 
         for (a, b) in pairs {
@@ -568,10 +568,10 @@ mod section_2_unit_tests {
     }
 
     // ========================================================================
-    //                    2.7 TESTS EN SUBMODULOS
+    //                    2.7 TESTS IN SUBMODULES
     // ========================================================================
 
-    // Puedes organizar tests en submódulos
+    // You can organize tests in submodules
     mod nested_module_tests {
         use super::*;
 
@@ -598,10 +598,10 @@ mod section_2_unit_tests {
     // ```text
     // ┌─────────────────────────────────────────────────────────────────────┐
     //   SETUP/TEARDOWN PATTERNS
-    //   ────────────────────────
+    //   ───────────────────────
     //
-    //   Rust no tiene @BeforeEach/@AfterEach como JUnit.
-    //   Alternativas:
+    //   Rust doesn't have @BeforeEach/@AfterEach like JUnit.
+    //   Alternatives:
     //
     //   A. STRUCT CONTEXT
     //      struct TestContext {
@@ -634,7 +634,7 @@ mod section_2_unit_tests {
     pub fn integration_test_with_context() {
         let ctx = TestContext::setup();
 
-        // Registrar múltiples usuarios
+        // Register multiple users
         ctx.service
             .register_user(1, "user1@test.com".to_string(), 25)
             .unwrap();
@@ -642,7 +642,7 @@ mod section_2_unit_tests {
             .register_user(2, "user2@test.com".to_string(), 30)
             .unwrap();
 
-        // Verificar
+        // Verify
         assert_eq!(ctx.service.total_users(), 2);
         assert!(ctx.service.get_user(1).is_ok());
         assert!(ctx.service.get_user(2).is_ok());
@@ -651,41 +651,41 @@ mod section_2_unit_tests {
 }
 
 // ╔══════════════════════════════════════════════════════════════════════════╗
-// ║                    PARTE 3: PROPTEST                                     ║
+// ║                    PART 3: PROPTEST                                     ║
 // ╚══════════════════════════════════════════════════════════════════════════╝
 
 // ```text
 // ┌─────────────────────────────────────────────────────────────────────────┐
-//   PROPTEST - Property-Based Testing Automático
+//   PROPTEST - Automatic Property-Based Testing
 // ├─────────────────────────────────────────────────────────────────────────┤
 //
-//   FLUJO DE PROPTEST:
-//   ──────────────────
+//   PROPTEST FLOW:
+//   ──────────────
 //
 //     ┌──────────────┐
-//        Strategy    ← Define cómo generar valores
-//      (generador)     any::<i32>(), "[a-z]+", 0..100
+//        Strategy    ← Define how to generate values
+//      (generator)     any::<i32>(), "[a-z]+", 0..100
 //     └──────┬───────┘
 //
-//            ▼ genera N valores aleatorios (default: 256)
+//            ▼ generates N random values (default: 256)
 //     ┌──────────────┐
-//        Test con
+//        Test with
 //       prop_assert
 //     └──────┬───────┘
 //
-//       ¿Falló?
+//       Failed?
 //        |   |
 //       NO  YES
 //        |   |
 //        ▼   ▼
-//       ✅  SHRINK ← Encuentra el caso MÁS SIMPLE que falla
+//       ✅  SHRINK ← Finds the SIMPLEST case that fails
 //                    [1000, -5, 42] → [0, -1, 0]
 //
-//   VENTAJAS:
-//   ──────────
-//   • Genera edge cases que no pensarías
-//   • Shrinking te da el caso mínimo reproducible
-//   • Mucha más cobertura con menos código
+//   ADVANTAGES:
+//   ───────────
+//   • Generates edge cases you wouldn't think of
+//   • Shrinking gives you the minimal reproducible case
+//   • Much more coverage with less code
 //
 // ─────────────────────────────────────────────────────────────────────────
 // ```
@@ -695,11 +695,11 @@ mod section_3_proptest {
     use proptest::prelude::*;
 
     // ========================================================================
-    //                    3.1 PROPIEDADES DE STRINGS
+    //                    3.1 STRING PROPERTIES
     // ========================================================================
 
     proptest! {
-        // Propiedad: reverse(reverse(s)) == s
+        // Property: reverse(reverse(s)) == s
         #[test]
         fn reverse_twice_is_identity(s in ".*") {
             let reversed = reverse_string(&s);
@@ -707,7 +707,7 @@ mod section_3_proptest {
             prop_assert_eq!(s, back);
         }
 
-        // Propiedad: la longitud se preserva al hacer reverse
+        // Property: length is preserved when reversing
         #[test]
         fn reverse_preserves_length(s in "\\PC*") {  // \PC = printable chars
             let reversed = reverse_string(&s);
@@ -716,23 +716,23 @@ mod section_3_proptest {
     }
 
     // ========================================================================
-    //                    3.2 PROPIEDADES MATEMÁTICAS
+    //                    3.2 MATHEMATICAL PROPERTIES
     // ========================================================================
 
     proptest! {
-        // Propiedad: a + b == b + a (conmutatividad)
+        // Property: a + b == b + a (commutativity)
         #[test]
         fn addition_is_commutative(a in -10000i32..10000, b in -10000i32..10000) {
             prop_assert_eq!(add(a, b), add(b, a));
         }
 
-        // Propiedad: a + 0 == a (identidad)
+        // Property: a + 0 == a (identity)
         #[test]
         fn zero_is_additive_identity(a in any::<i32>()) {
             prop_assert_eq!(add(a, 0), a);
         }
 
-        // Propiedad: (a + b) + c == a + (b + c) (asociatividad)
+        // Property: (a + b) + c == a + (b + c) (associativity)
         #[test]
         fn addition_is_associative(
             a in -1000i32..1000,
@@ -744,47 +744,47 @@ mod section_3_proptest {
     }
 
     // ========================================================================
-    //                    3.3 STRATEGIES PERSONALIZADAS
+    //                    3.3 CUSTOM STRATEGIES
     // ========================================================================
 
     // ```text
     // ┌─────────────────────────────────────────────────────────────────────┐
-    //   STRATEGIES PERSONALIZADAS
-    //   ─────────────────────────────
+    //   CUSTOM STRATEGIES
+    //   ────────────────
     //
-    //   Strategy = Generador de valores para proptest
+    //   Strategy = Value generator for proptest
     //
     //   BUILT-IN:
-    //   any::<T>()           → cualquier valor de tipo T
-    //   0..100               → rango de números
-    //   "[a-z]+"             → regex para strings
-    //   prop_oneof![a, b]    → uno de varios valores
+    //   any::<T>()           → any value of type T
+    //   0..100               → number range
+    //   "[a-z]+"             → regex for strings
+    //   prop_oneof![a, b]    → one of several values
     //
     //   CUSTOM: fn my_strategy() -> impl Strategy<Value = MyType>
     //
-    //   COMPOSICIÓN:
+    //   COMPOSITION:
     //   (strat1, strat2).prop_map(|(a, b)| combine(a, b))
     //
     // └─────────────────────────────────────────────────────────────────────┘
     // ```
 
-    // Strategy para generar emails válidos
+    // Strategy to generate valid emails
     fn valid_email_strategy() -> impl Strategy<Value = String> {
         (
-            "[a-z]{3,10}",                          // nombre
-            "[a-z]{3,8}",                           // dominio
-            prop_oneof!["com", "org", "net", "io"], // extensión
+            "[a-z]{3,10}",                          // name
+            "[a-z]{3,8}",                           // domain
+            prop_oneof!["com", "org", "net", "io"], // extension
         )
             .prop_map(|(name, domain, ext)| format!("{}@{}.{}", name, domain, ext))
     }
 
-    // Strategy para generar edades válidas (18+)
+    // Strategy to generate valid ages (18+)
     fn valid_age_strategy() -> impl Strategy<Value = u8> {
         18u8..=120
     }
 
     proptest! {
-        // Test con generadores personalizados
+        // Test with custom generators
         #[test]
         fn user_creation_succeeds_with_generated_valid_data(
             email in valid_email_strategy(),
@@ -794,41 +794,41 @@ mod section_3_proptest {
             let result = User::new(id, email.clone(), age);
             prop_assert!(
                 result.is_ok(),
-                "Falló con email={}, age={}, id={}", email, age, id
+                "Failed with email={}, age={}, id={}", email, age, id
             );
         }
     }
 
     // ========================================================================
-    //                    3.4 TESTING DE ERRORES ESPERADOS
+    //                    3.4 TESTING EXPECTED ERRORS
     // ========================================================================
 
     proptest! {
-        // Verificar que emails sin @ siempre fallan
+        // Verify that emails without @ always fail
         #[test]
         fn invalid_email_without_at_fails(
             name in "[a-z]{5,10}",
             domain in "[a-z]{3,5}"
         ) {
-            let invalid_email = format!("{}{}.com", name, domain);  // Sin @
+            let invalid_email = format!("{}{}.com", name, domain);  // No @
             let result = User::new(1, invalid_email, 25);
             prop_assert!(result.is_err());
         }
 
-        // Verificar que menores de 18 siempre fallan
+        // Verify that underage users always fail
         #[test]
         fn underage_users_fail(age in 0u8..18) {
             let result = User::new(1, "test@example.com".to_string(), age);
             prop_assert_eq!(result, Err(UserError::TooYoung { age }));
         }
 
-        // División por cero siempre falla
+        // Division by zero always fails
         #[test]
         fn division_by_zero_fails(numerator in any::<i32>()) {
             prop_assert!(divide(numerator, 0).is_err());
         }
 
-        // División por no-cero nunca falla
+        // Division by non-zero never fails
         #[test]
         fn division_by_nonzero_succeeds(
             a in any::<i32>(),
@@ -839,12 +839,12 @@ mod section_3_proptest {
     }
 
     // ========================================================================
-    //                    3.5 GENERACIÓN DE STRUCTS COMPLEJOS
+    //                    3.5 GENERATING COMPLEX STRUCTS
     // ========================================================================
 
     // ┌─────────────────────────────────────────────────────────────────────┐
-    //   prop_compose! - Generar structs válidos
-    //   ────────────────────────────────────
+    //   prop_compose! - Generate valid structs
+    //   ──────────────────────────────────────
     //
     //   prop_compose! {
     //       fn my_struct_strategy()(
@@ -855,7 +855,7 @@ mod section_3_proptest {
     //       }
     //   }
     //
-    //   Úsalo como: my_struct in my_struct_strategy()
+    //   Use as: my_struct in my_struct_strategy()
     //
     // └─────────────────────────────────────────────────────────────────────┘
 
@@ -870,13 +870,13 @@ mod section_3_proptest {
     }
 
     proptest! {
-        // Todos los usuarios válidos pueden votar (age >= 18 por construcción)
+        // All valid users can vote (age >= 18 by construction)
         #[test]
         fn all_valid_users_can_vote(user in valid_user_strategy()) {
             prop_assert!(user.can_vote());
         }
 
-        // Verificar invariantes del email
+        // Verify email format invariants
         #[test]
         fn user_email_always_valid_format(user in valid_user_strategy()) {
             prop_assert!(user.email.contains('@'));
@@ -885,11 +885,11 @@ mod section_3_proptest {
     }
 
     // ========================================================================
-    //                    3.6 TESTING DE COLECCIONES
+    //                    3.6 TESTING COLLECTIONS
     // ========================================================================
 
     proptest! {
-        // Propiedad: ordenar es idempotente (sort(sort(v)) == sort(v))
+        // Property: sorting is idempotent (sort(sort(v)) == sort(v))
         #[test]
         fn sorting_is_idempotent(mut vec in prop::collection::vec(any::<i32>(), 0..100)) {
             vec.sort();
@@ -898,7 +898,7 @@ mod section_3_proptest {
             prop_assert_eq!(first_sort, vec);
         }
 
-        // Propiedad: la longitud se preserva al ordenar
+        // Property: length is preserved when sorting
         #[test]
         fn sorting_preserves_length(vec in prop::collection::vec(any::<i32>(), 0..100)) {
             let len_before = vec.len();
@@ -910,7 +910,7 @@ mod section_3_proptest {
             prop_assert_eq!(len_before, sorted.len());
         }
 
-        // Propiedad: HashSet.len() <= Vec.len() (elimina duplicados)
+        // Property: HashSet.len() <= Vec.len() (removes duplicates)
         #[test]
         fn hashset_removes_duplicates(vec in prop::collection::vec(1i32..10, 0..50)) {
             use std::collections::HashSet;
@@ -920,7 +920,7 @@ mod section_3_proptest {
     }
 
     // ========================================================================
-    //                    3.7 CONFIGURACIÓN AVANZADA
+    //                    3.7 ADVANCED CONFIGURATION
     // ========================================================================
 
     // ```text
@@ -928,9 +928,9 @@ mod section_3_proptest {
     //   ProptestConfig
     //   ──────────────
     //
-    //   ProptestConfig::with_cases(N)   → N iteraciones (default: 256)
-    //   .max_shrink_iters(N)            → máx intentos de shrink
-    //   .timeout(Duration)              → timeout por caso
+    //   ProptestConfig::with_cases(N)   → N iterations (default: 256)
+    //   .max_shrink_iters(N)            → max shrink attempts
+    //   .timeout(Duration)              → timeout per case
     //
     //   proptest! {
     //       #![proptest_config(ProptestConfig::with_cases(1000))]
@@ -939,7 +939,7 @@ mod section_3_proptest {
     // └─────────────────────────────────────────────────────────────────────┘
     // ```
     proptest! {
-        #![proptest_config(ProptestConfig::with_cases(500))]  // 500 casos
+        #![proptest_config(ProptestConfig::with_cases(500))]  // 500 cases
 
         #[test]
         fn more_thorough_test(x in any::<i32>(), y in any::<i32>()) {
@@ -950,27 +950,27 @@ mod section_3_proptest {
 }
 
 // ╔══════════════════════════════════════════════════════════════════════════╗
-// ║                    PARTE 4: ASYNC TESTS                                  ║
+// ║                    PART 4: ASYNC TESTS                                  ║
 // ╚══════════════════════════════════════════════════════════════════════════╝
 
 // ```text
 // ┌─────────────────────────────────────────────────────────────────────────┐
-//   ASYNC TESTS CON TOKIO
+//   ASYNC TESTS WITH TOKIO
 // ├─────────────────────────────────────────────────────────────────────────┤
 //
-//   #[tokio::test]                  ← Crea runtime automáticamente
+//   #[tokio::test]                  ← Creates runtime automatically
 //   async fn my_async_test() {
 //       let result = my_async_fn().await;
 //       assert_eq!(result, expected);
 //   }
 //
-//   VARIANTES:
-//   ──────────
-//   #[tokio::test]                            ← Runtime básico
+//   VARIANTS:
+//   ─────────
+//   #[tokio::test]                            ← Basic runtime
 //   #[tokio::test(flavor = "multi_thread")]   ← Multi-threaded
-//   #[tokio::test(start_paused = true)]       ← Control de tiempo
+//   #[tokio::test(start_paused = true)]       ← Time control
 //
-//   REQUIERE en Cargo.toml:
+//   REQUIRES in Cargo.toml:
 //   [dev-dependencies]
 //   tokio = { version = "1", features = ["full", "test-util"] }
 //
@@ -1002,24 +1002,24 @@ mod section_4_async_tests {
 }
 
 // ╔══════════════════════════════════════════════════════════════════════════╗
-// ║                    PARTE 5: BENCHMARKING CON CRITERION                   ║
+// ║                    PART 5: BENCHMARKING WITH CRITERION                   ║
 // ╚══════════════════════════════════════════════════════════════════════════╝
 
 // ```text
 // ┌─────────────────────────────────────────────────────────────────────────┐
-//   CRITERION - Benchmarking Profesional
+//   CRITERION - Professional Benchmarking
 // ├─────────────────────────────────────────────────────────────────────────┤
 //
 //   FEATURES:
-//   ─────────
-//   • Estadísticas robustas (median, std dev, outliers)
-//   • Detección automática de regresiones
-//   • Reportes HTML con gráficos
-//   • Comparación entre implementaciones
+//   ────────
+//   • Robust statistics (median, std dev, outliers)
+//   • Automatic regression detection
+//   • HTML reports with graphs
+//   • Comparison between implementations
 //   • Throughput (bytes/sec, ops/sec)
 //
-//   SETUP en Cargo.toml:
-//   ─────────────────────
+//   SETUP in Cargo.toml:
+//   ──────────────────
 //   [dev-dependencies]
 //   criterion = "0.5"
 //
@@ -1027,35 +1027,35 @@ mod section_4_async_tests {
 //   name = "my_benchmarks"
 //   harness = false
 //
-//   COMANDOS:
-//   ─────────
-//   cargo bench                        # Todos los benchmarks
-//   cargo bench my_bench               # Benchmark específico
-//   cargo bench -- --save-baseline v1  # Guardar baseline
-//   cargo bench -- --baseline v1       # Comparar con baseline
+//   COMMANDS:
+//   ────────
+//   cargo bench                        # All benchmarks
+//   cargo bench my_bench               # Specific benchmark
+//   cargo bench -- --save-baseline v1  # Save baseline
+//   cargo bench -- --baseline v1       # Compare with baseline
 //
-//   REPORTES: target/criterion/report/index.html
+//   REPORTS: target/criterion/report/index.html
 //
 // ─────────────────────────────────────────────────────────────────────────
 //
 // ┌─────────────────────────────────────────────────────────────────────────┐
-//   ANATOMÍA DE UN BENCHMARK
+//   ANATOMY OF A BENCHMARK
 // ├─────────────────────────────────────────────────────────────────────────┤
 //
 //   use criterion::{black_box, criterion_group, criterion_main, Criterion};
 //
 //   fn bench_my_function(c: &mut Criterion) {
-//       c.bench_function("nombre", |b| {
+//       c.bench_function("name", |b| {
 //           b.iter(|| {
-//               // black_box() evita que el compilador optimice
+//               // black_box() prevents compiler optimizations
 //               my_function(black_box(input))
 //           })
 //       });
 //   }
 //
-//   // Comparar múltiples implementaciones
+//   // Compare multiple implementations
 //   fn bench_comparison(c: &mut Criterion) {
-//       let mut group = c.benchmark_group("comparacion");
+//       let mut group = c.benchmark_group("comparison");
 //
 //       group.bench_function("impl_a", |b| b.iter(|| impl_a()));
 //       group.bench_function("impl_b", |b| b.iter(|| impl_b()));
@@ -1063,7 +1063,7 @@ mod section_4_async_tests {
 //       group.finish();
 //   }
 //
-//   // Benchmark con diferentes tamaños de input
+//   // Benchmark with different input sizes
 //   fn bench_scaling(c: &mut Criterion) {
 //       let mut group = c.benchmark_group("scaling");
 //
@@ -1082,7 +1082,7 @@ mod section_4_async_tests {
 //
 // ─────────────────────────────────────────────────────────────────────────
 //
-// Ver archivo: benches/user_benchmarks.rs para ejemplos completos
+// See file: benches/user_benchmarks.rs for complete examples
 // ```
 #[cfg(test)]
 mod section_5_benchmarking {

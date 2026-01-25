@@ -24,18 +24,18 @@ fn indice() {
 
 /*
 ========================================================================
-ENTIDADES RELACIONADAS: id vs value vs Rc vs Arc
+RELATED ENTITIES: id vs value vs Rc vs Arc
 ========================================================================
 
-    ¿Cómo manejar entidades que pueden pertenecer a múltiples dueños?
+    How to handle entities that can belong to multiple owners?
 
-    ESCENARIO: Un Producto puede estar en múltiples lugares:
+    SCENARIO: A Product can be in multiple places:
     --------------------------------------------
-        - En un Carrito (Cart)
-        - En una Orden (Order)
-        - En una Wishlist
+        - In a Cart
+        - In an Order
+        - In a Wishlist
 
-    ¿Cómo modelamos esta relación?
+    How do we model this relationship?
 */
 
 #[derive(Debug, Clone)]
@@ -60,12 +60,12 @@ impl Product {
 VALUE_OWNERSHIP
 ========================================================================
 
-    VALUE OWNERSHIP (Copia completa):
+    VALUE OWNERSHIP (Complete copy):
     --------------------------------------------
-        Cada entidad POSEE su propia copia del producto.
-        Simple pero duplica datos en memoria.
+        Each entity OWNS its own copy of the product.
+        Simple but duplicates data in memory.
 
-        DIAGRAMA:
+        DIAGRAM:
         ┌─────────────────────────────────────────────────────────────┐
         │  (stack)                (heap 1)              (heap 2)      │
         │  product (original)     cart.items[0]       order.items[0]   │
@@ -80,13 +80,13 @@ VALUE_OWNERSHIP
         │              └────────┘          └────────┘         └────────┘
         │              (heap 3)            (heap 4)           (heap 5) │
         │                                                             │
-        │  → 3 copias independientes en memoria                       │
+        │  → 3 independent copies in memory                           │
         └─────────────────────────────────────────────────────────────┘
 
-    CARACTERÍSTICAS:
+    CHARACTERISTICS:
     --------------------------------------------
-        ✓ Ventajas: Simple, sin lifetimes, cada entidad es independiente
-        ✗ Desventajas: Duplica memoria, cambios no se propagan
+        ✓ Advantages: Simple, no lifetimes, each entity is independent
+        ✗ Disadvantages: Duplicates memory, changes don't propagate
 */
 #[cfg(test)]
 mod value_ownership {
@@ -94,13 +94,13 @@ mod value_ownership {
 
     #[derive(Debug, Clone)]
     pub struct CartItem {
-        pub product: Product, // Ownership: Cart POSEE el producto
+        pub product: Product, // Ownership: Cart OWNS the product
         pub quantity: u32,
     }
 
     #[derive(Debug, Clone)]
     pub struct OrderItem {
-        pub product: Product, // Ownership: Order POSEE el producto
+        pub product: Product, // Ownership: Order OWNS the product
         pub quantity: u32,
     }
 
@@ -119,10 +119,10 @@ mod value_ownership {
     pub fn value_ownership() {
         let product = Product::new(1, "Laptop", 999.99);
 
-        // Cada entidad tiene su PROPIA COPIA
+        // Each entity has its OWN COPY
         let cart = Cart {
             items: vec![CartItem {
-                product: product.clone(), // COPIA
+                product: product.clone(), // COPY
                 quantity: 1,
             }],
         };
@@ -130,26 +130,26 @@ mod value_ownership {
         let order = Order {
             id: 1,
             items: vec![OrderItem {
-                product: product.clone(), // OTRA COPIA
+                product: product.clone(), // ANOTHER COPY
                 quantity: 1,
             }],
         };
 
-        println!("  Producto original: {:?}", product);
-        println!("  En Cart: {:?}", cart.items[0].product.name);
-        println!("  En Order: {:?}", order.items[0].product.name);
+        println!("  Original product: {:?}", product);
+        println!("  In Cart: {:?}", cart.items[0].product.name);
+        println!("  In Order: {:?}", order.items[0].product.name);
 
-        // Verificar que son copias independientes
+        // Verify that they are independent copies
         let ptr_orig = product.name.as_ptr();
         let ptr_cart = cart.items[0].product.name.as_ptr();
         let ptr_order = order.items[0].product.name.as_ptr();
 
-        println!("\n  Direcciones de memoria (heap del String):");
+        println!("\n  Memory addresses (String heap):");
         println!("    Original: {:p}", ptr_orig);
         println!("    Cart:     {:p}", ptr_cart);
         println!("    Order:    {:p}", ptr_order);
         println!(
-            "    ¿Son diferentes? {}",
+            "    Are they different? {}",
             ptr_orig != ptr_cart && ptr_cart != ptr_order
         );
 
@@ -162,12 +162,12 @@ mod value_ownership {
 ID_REFERENCE
 ========================================================================
 
-    ID REFERENCE (Solo almacenar IDs):
+    ID REFERENCE (Store only IDs):
     --------------------------------------------
-        Las entidades solo guardan el ID del producto.
-        Los productos viven en un repositorio central.
+        Entities only store the product ID.
+        Products live in a central repository.
 
-        DIAGRAMA:
+        DIAGRAM:
         ┌─────────────────────────────────────────────────────────────┐
         │                                                             │
         │  cart.items[0]       order.items[0]      ProductRepository  │
@@ -184,13 +184,13 @@ ID_REFERENCE
         │  │ quantity: 2│                         └────────────────┘  │
         │  └────────────┘                                             │
         │                                                             │
-        │  → Un solo Product en memoria, múltiples referencias por ID │
+        │  → Only one Product in memory, multiple ID references       │
         └─────────────────────────────────────────────────────────────┘
 
-    CARACTERÍSTICAS:
+    CHARACTERISTICS:
     --------------------------------------------
-        ✓ Ventajas: Memoria eficiente, cambios se propagan, serializable
-        ✗ Desventajas: Lookup en cada acceso, repo debe vivir más
+        ✓ Advantages: Memory efficient, changes propagate, serializable
+        ✗ Disadvantages: Lookup on each access, repo must live longer
 */
 #[cfg(test)]
 mod id_reference {
@@ -199,7 +199,7 @@ mod id_reference {
 
     #[derive(Debug, Clone)]
     pub struct CartItem {
-        pub product_id: u64, // Solo el ID, no el objeto
+        pub product_id: u64, // Only the ID, not the object
         pub quantity: u32,
     }
 
@@ -220,7 +220,7 @@ mod id_reference {
         pub items: Vec<OrderItem>,
     }
 
-    // Repositorio central que POSEE los productos
+    // Central repository that OWNS the products
     pub struct ProductRepository {
         products: HashMap<u64, Product>,
     }
@@ -256,7 +256,7 @@ mod id_reference {
         repo.add(product1.clone());
         repo.add(product2.clone());
 
-        // Cart y Order solo guardan IDs
+        // Cart and Order only store IDs
         let cart = Cart {
             items: vec![
                 CartItem {
@@ -278,7 +278,7 @@ mod id_reference {
             }],
         };
 
-        // Para acceder al producto, buscamos en el repo
+        // To access the product, we search in the repo
         println!("  Cart items:");
         for item in &cart.items {
             if let Some(product) = repo.get(item.product_id) {
@@ -299,14 +299,14 @@ mod id_reference {
             }
         }
 
-        // Cambiar precio en repo afecta a todos
-        println!("\n  → Actualizando precio de Laptop a $899.99...");
+        // Changing price in repo affects everyone
+        println!("\n  → Updating Laptop price to $899.99...");
         repo.update_price(1, 899.99);
 
-        println!("  Ahora en Cart:");
+        println!("  Now in Cart:");
         if let Some(product) = repo.get(1) {
             println!(
-                "    - {} = ${:.2} (actualizado!)",
+                "    - {} = ${:.2} (updated!)",
                 product.name, product.price
             );
         }
@@ -322,10 +322,10 @@ RC_SHARED
 
     Rc (Reference Counted) - Single-thread:
     --------------------------------------------
-        Múltiples dueños del mismo objeto en memoria.
-        Contador de referencias, libera cuando llega a 0.
+        Multiple owners of the same object in memory.
+        Reference counter, frees when it reaches 0.
 
-        DIAGRAMA:
+        DIAGRAM:
         ┌─────────────────────────────────────────────────────────────┐
         │                                                             │
         │  product              cart.items[0]        order.items[0]   │
@@ -348,26 +348,26 @@ RC_SHARED
         │            │  └─────────────────────────────────────┘    │  │
         │            └─────────────────────────────────────────────┘  │
         │                                                             │
-        │  → UN SOLO objeto en memoria, 3 referencias contadas        │
-        │  → RefCell permite mutabilidad interior (runtime borrow check)
+        │  → ONLY ONE object in memory, 3 counted references         │
+        │  → RefCell enables interior mutability (runtime borrow check)
         └─────────────────────────────────────────────────────────────┘
 
-    CARACTERÍSTICAS:
+    CHARACTERISTICS:
     --------------------------------------------
-        ✓ Ventajas: Un objeto, múltiples dueños, cambios visibles para todos
-        ✗ Desventajas: Solo single-thread, overhead de contador, no serializable
+        ✓ Advantages: One object, multiple owners, changes visible to all
+        ✗ Disadvantages: Single-thread only, counter overhead, not serializable
 
     Rc<RefCell<T>>:
     --------------------------------------------
-        Rc solo te entrega referencias inmutables (&T)
-        RefCell permite mutabilidad interior (runtime borrow check) aun en
-        referencias inmutables (&T). Sin esa combinacion product seria readonly.
+        Rc only gives you immutable references (&T)
+        RefCell enables interior mutability (runtime borrow check) even with
+        immutable references (&T). Without this combination, product would be readonly.
 
-    SEGURIDAD:
+    SAFETY:
     --------------------------------------------
-        Rec<RefCell<T>> no es multi-thread safe:
-        - RefCell no es Sync.
-        - Rc no es Send ni Sync.
+        Rc<RefCell<T>> is not multi-thread safe:
+        - RefCell is not Sync.
+        - Rc is neither Send nor Sync.
 */
 #[cfg(test)]
 mod rc_shared {
@@ -377,7 +377,7 @@ mod rc_shared {
 
     #[derive(Debug, Clone)]
     pub struct CartItem {
-        pub product: Rc<RefCell<Product>>, // Shared ownership + mutabilidad
+        pub product: Rc<RefCell<Product>>, // Shared ownership + mutability
         pub quantity: u32,
     }
 
@@ -400,39 +400,39 @@ mod rc_shared {
 
     #[test]
     pub fn rc_shared() {
-        // Crear producto con Rc<RefCell<T>>
+        // Create product with Rc<RefCell<T>>
         let product = Rc::new(RefCell::new(Product::new(1, "Laptop", 999.99)));
 
-        println!("  Rc strong_count inicial: {}", Rc::strong_count(&product));
+        println!("  Rc strong_count initial: {}", Rc::strong_count(&product));
 
-        // Cart y Order comparten el MISMO producto
+        // Cart and Order share the SAME product
         let cart = Cart {
             items: vec![CartItem {
-                product: Rc::clone(&product), // Incrementa contador, no copia datos
+                product: Rc::clone(&product), // Increments counter, no data copy
                 quantity: 1,
             }],
         };
 
         println!(
-            "  Rc strong_count después de Cart: {}",
+            "  Rc strong_count after Cart: {}",
             Rc::strong_count(&product)
         );
 
         let order = Order {
             id: 1,
             items: vec![OrderItem {
-                product: Rc::clone(&product), // Incrementa contador
+                product: Rc::clone(&product), // Increments counter
                 quantity: 1,
             }],
         };
 
         println!(
-            "  Rc strong_count después de Order: {}",
+            "  Rc strong_count after Order: {}",
             Rc::strong_count(&product)
         );
 
-        // Verificar que es el MISMO objeto
-        println!("\n  Direcciones de memoria:");
+        // Verify that it's the SAME object
+        println!("\n  Memory addresses:");
         println!("    product:           {:p}", Rc::as_ptr(&product));
         println!(
             "    cart.items[0]:     {:p}",
@@ -443,20 +443,20 @@ mod rc_shared {
             Rc::as_ptr(&order.items[0].product)
         );
         println!(
-            "    ¿Son el mismo? {}",
+            "    Are they the same? {}",
             Rc::ptr_eq(&product, &cart.items[0].product)
         );
 
-        // Modificar desde cualquier lugar afecta a todos
-        println!("\n  Precio original: ${:.2}", product.borrow().price);
+        // Modify from anywhere affects everyone
+        println!("\n  Original price: ${:.2}", product.borrow().price);
         product.borrow_mut().price = 899.99;
-        println!("  Precio modificado: ${:.2}", product.borrow().price);
+        println!("  Modified price: ${:.2}", product.borrow().price);
         println!(
-            "  Visto desde Cart: ${:.2}",
+            "  Seen from Cart: ${:.2}",
             cart.items[0].product.borrow().price
         );
         println!(
-            "  Visto desde Order: ${:.2}",
+            "  Seen from Order: ${:.2}",
             order.items[0].product.borrow().price
         );
 
@@ -471,9 +471,9 @@ ARC_SHARED
 
     Arc (Atomic Reference Counted) - Multi-thread:
     --------------------------------------------
-        Como Rc pero thread-safe. Usa operaciones atómicas.
+        Like Rc but thread-safe. Uses atomic operations.
 
-        DIAGRAMA:
+        DIAGRAM:
         ┌─────────────────────────────────────────────────────────────┐
         │                                                             │
         │  Thread 1              Thread 2              Thread 3       │
@@ -488,7 +488,7 @@ ARC_SHARED
         │            │  ┌─────────────────────────────────────┐    │  │
         │            │  │ atomic_count: 3                     │    │  │
         │            │  │ ┌─────────────────────────────────┐ │    │  │
-        │            │  │ │ Product (protegido por RwLock)  │ │    │  │
+        │            │  │ │ Product (protected by RwLock)   │ │    │  │
         │            │  │ │   id: 1                         │ │    │  │
         │            │  │ │   name: "Laptop"                │ │    │  │
         │            │  │ │   price: 849.99                 │ │    │  │
@@ -496,26 +496,26 @@ ARC_SHARED
         │            │  └─────────────────────────────────────┘    │  │
         │            └─────────────────────────────────────────────┘  │
         │                                                             │
-        │  → Thread-safe: múltiples threads pueden acceder            │
-        │  → RwLock: múltiples lectores O un escritor                 │
-        │  → Operaciones atómicas (más overhead que Rc)               │
+        │  → Thread-safe: multiple threads can access                │
+        │  → RwLock: multiple readers OR one writer                  │
+        │  → Atomic operations (more overhead than Rc)               │
         └─────────────────────────────────────────────────────────────┘
 
-    CARACTERÍSTICAS:
+    CHARACTERISTICS:
     --------------------------------------------
-        ✓ Ventajas: Thread-safe, un objeto, múltiples dueños
-        ✗ Desventajas: Overhead atómico, locks, no serializable
+        ✓ Advantages: Thread-safe, one object, multiple owners
+        ✗ Disadvantages: Atomic overhead, locks, not serializable
 
-    COMPARATIVA: Rc<RefCell<T>> vs Arc<RwLock<T>>:
+    COMPARISON: Rc<RefCell<T>> vs Arc<RwLock<T>>:
     --------------------------------------------
-        1. El costo de la "Atomicidad" (Arc vs Rc):
-           Arc debe usar instrucciones atómicas de la CPU (más lentas).
+        1. The cost of "Atomicity" (Arc vs Rc):
+           Arc must use atomic CPU instructions (slower).
 
-        2. El costo del "Bloqueo" (RwLock vs RefCell):
-           RwLock interactúa con el SO (syscalls), RefCell es casi instantáneo.
+        2. The cost of "Locking" (RwLock vs RefCell):
+           RwLock interacts with the OS (syscalls), RefCell is nearly instant.
 
-        3. Claridad de Intención:
-           Rc indica objeto local al hilo, Arc indica concurrencia.
+        3. Clarity of Intent:
+           Rc indicates thread-local object, Arc indicates concurrency.
 */
 #[cfg(test)]
 mod arc_shared {
@@ -547,11 +547,11 @@ mod arc_shared {
 
     #[test]
     pub fn arc_shared() {
-        // Crear producto con Arc<RwLock<T>>
+        // Create product with Arc<RwLock<T>>
         let product = Arc::new(RwLock::new(Product::new(1, "Laptop", 999.99)));
 
         println!(
-            "  Arc strong_count inicial: {}",
+            "  Arc strong_count initial: {}",
             Arc::strong_count(&product)
         );
 
@@ -571,29 +571,29 @@ mod arc_shared {
         };
 
         println!(
-            "  Arc strong_count después de Cart y Order: {}",
+            "  Arc strong_count after Cart and Order: {}",
             Arc::strong_count(&product)
         );
 
-        // Simular acceso desde múltiples threads
+        // Simulate access from multiple threads
         let product_for_thread = Arc::clone(&product);
 
         let handle = std::thread::spawn(move || {
-            // Modificar precio desde otro thread
+            // Modify price from another thread
             let mut p = product_for_thread.write().unwrap();
             p.price = 849.99;
-            println!("  [Thread] Precio modificado a: ${:.2}", p.price);
+            println!("  [Thread] Price modified to: ${:.2}", p.price);
         });
 
         handle.join().unwrap();
 
-        // Ver cambio desde thread principal
+        // See change from main thread
         println!(
-            "  [Main] Precio visto: ${:.2}",
+            "  [Main] Price seen: ${:.2}",
             product.read().unwrap().price
         );
         println!(
-            "  [Cart] Precio visto: ${:.2}",
+            "  [Cart] Price seen: ${:.2}",
             cart.items[0].product.read().unwrap().price
         );
 
@@ -603,15 +603,15 @@ mod arc_shared {
 
 /*
 ========================================================================
-LIFETIMES_REF: REFERENCIAS CON LIFETIMES (&'a T)
+LIFETIMES_REF: REFERENCES WITH LIFETIMES (&'a T)
 ========================================================================
 
-    La forma más "pura" de Rust. No hay contador de referencias ni IDs.
-    El compilador garantiza que el dueño viva más que la referencia.
+    The most "pure" form of Rust. No reference counters or IDs.
+    The compiler guarantees the owner lives longer than the reference.
 
-    ✓ Ventajas: Zero-cost, máxima performance.
-    ✗ Desventajas: Muy difícil de gestionar en grafos complejos o estructuras
-       que deben vivir mucho tiempo (el dueño debe sobrevivir a todos).
+    ✓ Advantages: Zero-cost, maximum performance.
+    ✗ Disadvantages: Very difficult to manage in complex graphs or structures
+       that must live for a long time (the owner must outlive everyone).
 */
 
 #[cfg(test)]
@@ -627,14 +627,14 @@ mod lifetimes_ref {
     pub fn lifetimes_ref() {
         let product = Product::new(1, "Laptop", 999.99);
 
-        // El CartItem solo vive mientras viva 'product'
+        // The CartItem only lives as long as 'product'
         let item = CartItem {
             product: &product,
             quantity: 1,
         };
 
         println!(
-            "  [Lifetimes] Producto: {}, Precio: {}",
+            "  [Lifetimes] Product: {}, Price: {}",
             item.product.name, item.product.price
         );
         assert_eq!(item.product.id, 1);
@@ -643,22 +643,22 @@ mod lifetimes_ref {
 
 /*
 ========================================================================
-WEAK_REFERENCES: REFERENCIAS DÉBILES (Weak<T>)
+WEAK_REFERENCES: WEAK REFERENCES (Weak<T>)
 ========================================================================
 
-    El Weak trata de agregar un Rc::clone o Arc::clone a pedido
-    mientras su contenido (el interior de rc o arc) exista en memoria.
+    Weak tries to create an Rc::clone or Arc::clone on demand
+    while its content (the interior of rc or arc) exists in memory.
 
-    Si el objeto original muere, la referencia débil ya no puede ser
-    "subida" (upgrade) a Rc/Arc.
+    If the original object dies, the weak reference can no longer be
+    "upgraded" to Rc/Arc.
 
-    ✓ Ventajas:
-        Cachés: Puedes tener un Weak en un caché. Si nadie más está usando el objeto (el Arc murió), el caché no debería mantenerlo vivo artificialmente.
+    ✓ Advantages:
+        Caches: You can have a Weak in a cache. If no one else is using the object (the Arc died), the cache shouldn't keep it alive artificially.
 
-        Estructuras Circulares en Threads: Si tienes dos servicios que se necesitan mutuamente pero corren en hilos distintos, uno debe usar Weak para que el sistema pueda cerrarse correctamente (hacer el shutdown) sin quedarse esperando infinitamente al otro.
+        Circular Structures in Threads: If you have two services that need each other but run in different threads, one must use Weak so the system can shut down correctly without waiting infinitely for the other.
 
-    ✗ Desventajas: Debes "intentar" (upgrade) convertirlo a Rc/Arc antes
-       de usarlo, ya que el objeto podría haber sido liberado.
+    ✗ Disadvantages: You must "try" to (upgrade) convert it to Rc/Arc before
+       using it, since the object might have been freed.
 */
 
 #[cfg(test)]
@@ -671,37 +671,37 @@ mod weak_references {
     pub fn weak_references() {
         let product = Rc::new(RefCell::new(Product::new(1, "Laptop", 999.99)));
 
-        // Creamos una referencia débil
+        // Create a weak reference
         let weak_product: Weak<RefCell<Product>> = Rc::downgrade(&product);
 
-        // Para usarla, debemos intentar "subirla" a Rc
+        // To use it, we must try to "upgrade" it to Rc
         if let Some(strong_product) = weak_product.upgrade() {
             println!(
-                "  [Weak] Producto recuperado: {}",
+                "  [Weak] Product recovered: {}",
                 strong_product.borrow().name
             );
         }
 
-        // Si el original muere...
+        // If the original dies...
         drop(product);
 
         if weak_product.upgrade().is_none() {
-            println!("  [Weak] El producto ya no existe (evitamos dangling pointers)");
+            println!("  [Weak] Product no longer exists (we avoid dangling pointers)");
         }
     }
 }
 
 /*
 ========================================================================
-ARENA_ALLOCATION: ASIGNACIÓN EN ARENA
+ARENA_ALLOCATION: ARENA ALLOCATION
 ========================================================================
 
-    Se reservan bloques grandes de memoria donde viven todos los objetos enteros.
-    La Arena es la dueña de todo, y nos presta referencias.
+    Large blocks of memory are reserved where all objects live.
+    The Arena owns everything and lends us references.
 
-    ✓ Ventajas: Extremadamente rápido, permite usar referencias simples (&T)
-       porque todos los objetos mueren al mismo tiempo que el "Arena".
-    ✗ Desventajas: No puedes liberar objetos individuales fácilmente.
+    ✓ Advantages: Extremely fast, allows using simple references (&T)
+       because all objects die at the same time as the "Arena".
+    ✗ Disadvantages: You can't easily free individual objects.
 */
 
 #[cfg(test)]
@@ -711,21 +711,21 @@ mod arena_allocation {
     use std::cell::RefCell;
 
     pub struct Arena {
-        // Usamos RefCell para permitir 'alloc' con &self
+        // We use RefCell to allow 'alloc' with &self
         products: RefCell<Vec<Product>>,
     }
 
     impl Arena {
-        // En una arena real, esto devolvería una referencia que vive tanto como la arena
-        // Aquí, para simplificar, devolvemos el ID o simplemente mostramos el concepto.
-        // Pero para que compile con &T, necesitamos que el Vec no se mueva.
+        // In a real arena, this would return a reference that lives as long as the arena
+        // Here, to simplify, we return the ID or just show the concept.
+        // But for it to compile with &T, we need the Vec to not move.
         fn alloc(&self, p: Product) {
             self.products.borrow_mut().push(p);
         }
 
         fn get_all(&self) {
             for p in self.products.borrow().iter() {
-                println!("  [Arena] Producto: {}", p.name);
+                println!("  [Arena] Product: {}", p.name);
             }
         }
     }
@@ -736,7 +736,7 @@ mod arena_allocation {
             products: RefCell::new(Vec::new()),
         };
 
-        // La arena es dueña de los datos
+        // The arena owns the data
         arena.alloc(Product::new(1, "Laptop", 999.99));
         arena.alloc(Product::new(2, "Mouse", 25.00));
 
@@ -750,25 +750,25 @@ mod arena_allocation {
 ECS_PATTERN: ENTITY COMPONENT SYSTEM
 ========================================================================
 
-    Data-Oriented (orientada a los datos) en lugar de orientada a los objetos.
+    Data-Oriented (data-focused) rather than object-oriented.
 
-    Arquitectura donde las entidades son solo un número (ID), y los datos
-    (Componentes) viven en arrays contiguos en memoria.
+    Architecture where entities are just a number (ID), and data
+    (Components) lives in contiguous memory arrays.
 
-    TRADICIONAL (AoS):
-        [ ID, Nombre, Precio ] [ ID, Nombre, Precio ] [ ID, Nombre, Precio ]
+    TRADITIONAL (AoS):
+        [ ID, Name, Price ] [ ID, Name, Price ] [ ID, Name, Price ]
             ^       ^       ^
-            └───────┴───────┴── El CPU carga todo esto aunque solo quiera el precio.
+            └───────┴───────┴── The CPU loads all this even if it only wants the price.
 
     ECS (SoA):
-        Nombres: [ Nombre ] [ Nombre ] [ Nombre ]
-        Precios: [ Precio ] [ Precio ] [ Precio ]  <-- El CPU vuela recorriendo esto.
+        Names: [ Name ] [ Name ] [ Name ]
+        Prices: [ Price ] [ Price ] [ Price ]  <-- The CPU flies through this.
 
-    Puedes procesar miles de precios en un solo ciclo de reloj
-    porque están pegados unos a otros en memoria.
+    You can process thousands of prices in a single clock cycle
+    because they're stuck together in memory.
 
-    ✓ Ventajas: Cache-friendly, desacoplamiento total, muy escalable.
-    ✗ Desventajas: Curva de aprendizaje alta, arquitectura más compleja.
+    ✓ Advantages: Cache-friendly, total decoupling, very scalable.
+    ✗ Disadvantages: High learning curve, more complex architecture.
 */
 
 #[cfg(test)]
@@ -776,41 +776,41 @@ mod ecs_pattern {
 
     /*
     ========================================================================
-    ECS: IMPLEMENTACIÓN CON HASHMAP
+    ECS: HASHMAP IMPLEMENTATION
     ========================================================================
 
-    Estructura:
+    Structure:
         let mut names: HashMap<u32, String> = HashMap::new();
 
-    Borrar un item de hashmap:
+    Deleting an item from hashmap:
 
-        Cuando haces hashmap.remove(&id), la entrada desaparece. Si iteras el HashMap, ese elemento simplemente no está. No tienes que lidiar con un Option::None como en el Vec<Option<T>>.
+        When you do hashmap.remove(&id), the entry disappears. If you iterate the HashMap, that element simply isn't there. You don't have to deal with Option::None like in Vec<Option<T>>.
 
-        Internamente, un HashMap es un array de "buckets". Cuando borras algo:
+        Internally, a HashMap is an array of "buckets". When you delete something:
 
-        El HashMap marca ese espacio como "vacío" o usa un "tombstone" (una marca que dice "aquí hubo algo").
-        El "hueco" físico existe en la memoria RAM, pero el HashMap lo gestiona por ti.
-        El problema de performance:
-        Aunque el HashMap oculte el hueco, los datos siguen estando dispersos. El CPU no puede predecir dónde está el siguiente elemento porque los hashes son aleatorios. Saltas de una dirección de memoria a otra (esto se llama Pointer Chasing), lo que vacía el cache del CPU.
+        The HashMap marks that space as "empty" or uses a "tombstone" (a mark that says "something was here").
+        The physical "hole" exists in RAM, but the HashMap manages it for you.
+        The performance problem:
+        Although the HashMap hides the hole, the data is still scattered. The CPU can't predict where the next element is because hashes are random. You jump from one memory address to another (this is called Pointer Chasing), which empties the CPU cache.
      */
     pub mod ecs_hashmap {
         use std::collections::HashMap;
 
         #[test]
         pub fn ecs_pattern() {
-            // Las entidades son solo IDs
+            // Entities are just IDs
             let entity_id = 100;
 
-            // Los componentes viven en storages separados
+            // Components live in separate storages
             let mut names: HashMap<u32, String> = HashMap::new();
             let mut prices: HashMap<u32, f64> = HashMap::new();
 
             names.insert(entity_id, "Laptop".to_string());
             prices.insert(entity_id, 999.99);
 
-            // Accedemos a los datos por ID
+            // We access the data by ID
             if let (Some(name), Some(price)) = (names.get(&entity_id), prices.get(&entity_id)) {
-                println!("  [ECS] Entidad {}: {} cuesta ${}", entity_id, name, price);
+                println!("  [ECS] Entity {}: {} costs ${}", entity_id, name, price);
             }
 
             assert_eq!(names.len(), 1);
@@ -819,34 +819,34 @@ mod ecs_pattern {
 
     /*
     ========================================================================
-    ECS_CONTIGUOUS: IMPLEMENTACIÓN CON VECTORES (SoA)
+    ECS_CONTIGUOUS: VECTOR IMPLEMENTATION (SoA)
     ========================================================================
 
-        Estructura Interna:
+        Internal Structure:
 
             names: Vec<Option<String>>,
 
-        Aquí los componentes viven en Vecs. El ID de la entidad es el índice.
-        Es la forma más rápida para el CPU porque los datos están pegados.
+        Here components live in Vecs. The entity ID is the index.
+        It's the fastest form for the CPU because data is stuck together.
 
-        Sin Hashing:
-        No hay que calcular ninguna función matemática para encontrar el dato. Si quieres el precio de la entidad 5, vas directo a prices[5].
+        No Hashing:
+        No mathematical function needs to be calculated to find the data. If you want the price of entity 5, you go directly to prices[5].
 
-        Prefetching del CPU:
-        Cuando el CPU ve que estás recorriendo un Vec<f64>, el hardware "adivina" que vas a necesitar el siguiente número y lo trae del RAM al Cache antes de que se lo pidas.
+        CPU Prefetching:
+        When the CPU sees you're iterating through a Vec<f64>, the hardware "guesses" you'll need the next number and brings it from RAM to Cache before you ask for it.
 
-        Densidad de datos: E
-        En un HashMap, hay espacios vacíos (buckets) y metadatos. En un Vec<f64>, cada byte del cache está lleno de información útil.
+        Data Density:
+        In a HashMap, there are empty spaces (buckets) and metadata. In a Vec<f64>, every byte of cache is full of useful information.
 
-        Borrado con Huecos:
-        Si borras una entidad, puedes dejar un None en su lugar. El CPU simplemente salta ese espacio cuando itera.
+        Deletion with Holes:
+        If you delete an entity, you can leave a None in its place. The CPU simply skips that space when iterating.
     */
 
     pub mod ecs_contiguous {
-        // instead of using object, one single World struct with Vecs for components
+        // Instead of using object, one single World struct with Vecs for components
         // with data from all the entities
         pub struct World {
-            // Cada índice es una entidad. Option permite que no todas tengan todo.
+            // Each index is an entity. Option allows not all to have everything.
             names: Vec<Option<String>>,
             prices: Vec<Option<f64>>,
         }
@@ -872,69 +872,68 @@ mod ecs_pattern {
             let mut world = World::new();
             world.spawn("Laptop", 999.99);
             world.spawn("Mouse", 25.00);
-            world.spawn("Teclado", 50.00);
+            world.spawn("Keyboard", 50.00);
 
-            // SISTEMA: Aplicar descuento del 10% a TODO
-            // El CPU vuela aquí porque recorre un array de f64 puro y duro.
+            // SYSTEM: Apply 10% discount to EVERYTHING
+            // The CPU flies here because it traverses a pure f64 array.
             for price_opt in world.prices.iter_mut() {
                 if let Some(price) = price_opt {
                     *price *= 0.9;
                 }
             }
 
-            println!("  [ECS Contiguo] Precios actualizados en bloque.");
+            println!("  [ECS Contiguous] Prices updated in bulk.");
             assert_eq!(world.prices[0], Some(899.991));
         }
     }
 
     /*
     ========================================================================
-    ECS_SPARSE_SET: IMPLEMENTACIÓN CON SPARSE SET
+    ECS_SPARSE_SET: SPARSE SET IMPLEMENTATION
     ========================================================================
 
-        Estructura Interna:
+        Internal Structure:
             dense: vec<T>
-                // con los datos contiguos [T, T, T, T]
+                // with contiguous data [T, T, T, T]
             sparse: vec<isize>
-                // con los indices en dense para cada entidad
+                // with indices in dense for each entity
                 // [id1 -> idx_dense, id2 -> idx_dense, ...]
-                // es un vector con huecos (-1) donde no hay datos ej si id = 1.000.000
-                // pone -1 en todas las posiciones vacias hasta llegar a 1.000.000
+                // is a vector with holes (-1) where there's no data e.g. if id = 1,000,000
+                // puts -1 in all empty positions up to 1,000,000
             entities: vec<usize>
-                // inverso de sparce
+                // inverse of sparse
                 // [idx_dense -> id1, idx_dense -> id2, ...]
-                // tambien tiene huecos
+                // also has holes
 
-        Ideal para componentes que se agregan/quitan frecuentemente.
-        Al borrar un item, mueves el último al hueco, manteniendo todo pegado.
+        Ideal for components that are added/removed frequently.
+        When you delete an item, you move the last one to the hole, keeping everything stuck together.
 
-        Iteración Perfecta:
-        El método iter() recorre self.dense. No hay Option, no hay if let Some, no hay saltos. El CPU puede hacer SIMD (procesar varios números a la vez).
+        Perfect Iteration:
+        The iter() method traverses self.dense. No Option, no if let Some, no jumps. The CPU can do SIMD (process several numbers at once).
 
-        Borrado O(1):
-        No importa si tienes 3 o 3 millones de elementos, borrar siempre cuesta lo mismo porque solo intercambias dos posiciones y haces un pop().
+        O(1) Deletion:
+        Whether you have 3 or 3 million elements, deletion always costs the same because you only swap two positions and do a pop().
 
         Cache Locality:
-        Al no haber huecos, cada vez que el CPU trae una línea de cache de la RAM, el 100
+        With no holes, every time the CPU brings a cache line from RAM, 100% of it is useful data.
 
-        "Debilidad" del Sparse Set: el consumo de memoria en el array sparse:
+        "Weakness" of Sparse Set: memory consumption in the sparse array:
 
-            El costo es bajo: Un isize (o u32) ocupa solo 4 u 8 bytes. Tener un array sparse de 1 millón de elementos ocupa unos 4MB o 8MB. Para una PC moderna, eso es insignificante comparado con la velocidad que ganas.
+            The cost is low: An isize (or u32) takes only 4 or 8 bytes. Having a sparse array of 1 million elements takes about 4MB or 8MB. For a modern PC, that's insignificant compared to the speed you gain.
 
-            Velocidad vs Memoria: Prefieres gastar 8MB de RAM para tener acceso
-            O ( 1 ) O(1) instantáneo, en lugar de usar un HashMap que es más lento y "ensucia" el cache del CPU.
+            Speed vs Memory: You prefer spending 8MB of RAM to have instant O(1) access, rather than using a HashMap which is slower and "dirties" the CPU cache.
 
-            Los IDs suelen ser contiguos: En la mayoría de los motores de juegos o sistemas de alta performance, los IDs se reciclan. Si una entidad muere, su ID se guarda para la siguiente, manteniendo los números lo más bajos posible.
+            IDs are usually contiguous: In most game engines or high-performance systems, IDs are recycled. If an entity dies, its ID is saved for the next one, keeping numbers as low as possible.
 
-        Solucion a Debilidad:
-            Si tu aplicación maneja IDs muy dispersos (ej. 1 y 1.000.000), usar paginado o sharding para dividir el sparse en bloques más pequeños puede ayudar a reducir el consumo de memoria.
+        Solution to Weakness:
+            If your application handles very scattered IDs (e.g. 1 and 1,000,000), using pagination or sharding to divide the sparse into smaller blocks can help reduce memory consumption.
 
      */
     pub mod ecs_sparse_set {
         pub struct SparseSet<T> {
-            dense: Vec<T>,        // Datos pegados (Cache-friendly)
-            entities: Vec<usize>, // ID de la entidad en cada posición del dense
-            sparse: Vec<isize>,   // Mapa: ID_Entidad -> Posición en dense (-1 si no existe)
+            dense: Vec<T>,        // Data stuck together (Cache-friendly)
+            entities: Vec<usize>, // Entity ID at each dense position
+            sparse: Vec<isize>,   // Map: Entity_ID -> Position in dense (-1 if doesn't exist)
         }
 
         impl<T> SparseSet<T> {
@@ -956,11 +955,11 @@ mod ecs_pattern {
             }
 
             pub fn insert(&mut self, entity_id: usize, data: T) {
-                // Asegurar espacio en el array sparse
+                // Ensure space in sparse array
                 if entity_id >= self.sparse.len() {
                     self.sparse.resize(entity_id + 1, -1);
                 }
-                // Guardar índice actual
+                // Store current index
                 self.sparse[entity_id] = self.dense.len() as isize;
                 self.dense.push(data);
                 self.entities.push(entity_id);
@@ -970,22 +969,22 @@ mod ecs_pattern {
                 let idx = self.sparse[entity_id] as usize;
                 let last_idx = self.dense.len() - 1;
 
-                // 1. Mover el último elemento al hueco del que borramos
+                // 1. Move the last element to the hole of what we deleted
                 self.dense.swap(idx, last_idx);
                 self.entities.swap(idx, last_idx);
 
-                // 2. Actualizar el mapa sparse para la entidad que movimos
+                // 2. Update sparse map for the entity we moved
                 let moved_entity = self.entities[idx];
                 self.sparse[moved_entity] = idx as isize;
 
-                // 3. Limpiar
+                // 3. Clean up
                 self.sparse[entity_id] = -1;
                 self.dense.pop();
                 self.entities.pop();
             }
 
             pub fn iter(&self) -> impl Iterator<Item = &T> {
-                self.dense.iter() // ¡Iteración pura y dura sin Options!
+                self.dense.iter() // Pure and simple iteration without Options!
             }
         }
 
@@ -996,12 +995,12 @@ mod ecs_pattern {
             prices.insert(1, 200.0);
             prices.insert(2, 300.0);
 
-            prices.remove(1); // Borramos el del medio
+            prices.remove(1); // Delete the one in the middle
 
-            // El array dense ahora tiene [100.0, 300.0] pegados.
-            // El CPU no sabe que hubo un borrado, solo ve datos contiguos.
+            // The dense array now has [100.0, 300.0] stuck together.
+            // The CPU doesn't know there was a deletion, it only sees contiguous data.
             for price in prices.iter() {
-                println!("  [SparseSet] Precio: {}", price);
+                println!("  [SparseSet] Price: {}", price);
             }
         }
     }

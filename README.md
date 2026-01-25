@@ -1,59 +1,60 @@
-# Rust: Aprendizaje de conceptos fundamentales y avanzados 
+# Rust: Fundamental and Advanced Concepts
 
-Repositorio de aprendizaje y referencia sobre conceptos fundamentales y avanzados de Rust. Cada módulo en [`src/estudios/`](src/estudios/) contiene explicaciones detalladas, ejemplos ejecutables y tests que demuestran características específicas del lenguaje.
+Reference repository for fundamental and advanced concepts of Rust. Each module in [`src/estudios/`](src/estudios/) contains detailed explanations, executable examples, and tests that demonstrate specific language features.
 
-## Contenido
+## Content
 
-- [`memory_and_types.rs`](src/estudios/memory_and_types.rs) - Tipos, tamaños, alignment, layouts
-- [`stack_vs_heap.rs`](src/estudios/stack_vs_heap.rs) - Diferencias entre stack y heap, Box, Rc, Arc
-- [`array_slice_vec_string.rs`](src/estudios/array_slice_vec_string.rs) - Arrays, slices, vectores, strings y manejo de UTF-8
-- [`stacks_func.rs`](src/estudios/stacks_func.rs) - Stack frames, call stack
-- [`referencias_vs_valor.rs`](src/estudios/referencias_vs_valor.rs) - Referencias vs valores, borrowing, deref coercion
-- [`lifetimes.rs`](src/estudios/lifetimes.rs) - Lifetimes explícitos, elision rules, static
-- [`comparisons_equal_partial_greater.rs`](src/estudios/comparisons_equal_partial_greater.rs) - Eq, PartialEq, Ord, PartialOrd
-- [`syntax_sugar.rs`](src/estudios/syntax_sugar.rs) - Azúcar sintáctica de Rust
-- [`estructuras_ids.rs`](src/estudios/estructuras_ids.rs) - Estructuras con IDs, newtype pattern
-- [`clousures.rs`](src/estudios/clousures.rs) - Closures: Fn, FnMut, FnOnce, capturas, trait objects
-- [`modules_demo.rs`](src/estudios/modules_demo.rs) - Estrategias de organización de módulos
-- [`iteradores.rs`](src/estudios/iteradores.rs) - Iteradores, adaptadores, lazy evaluation
-- [`traits_concepts.rs`](src/estudios/traits_concepts.rs) - Traits, implementaciones, object safety, polimorfismo
+- [`memory_and_types.rs`](src/estudios/memory_and_types.rs) - Types, sizes, alignment, layouts
+- [`stack_vs_heap_performance.rs`](src/estudios/stack_vs_heap_performance.rs) - Stack vs heap benchmarks
+- [`lifetimes.rs`](src/estudios/lifetimes.rs) - Implicit/explicit lifetimes, bounds, 'static lifetimes 
+- [`references_vs_values.rs`](src/estudios/references_vs_values.rs) - References vs values, borrowing, auto-ref in methods, Deref/DerefMut, auto-deref coercion in structs, benchmark
+- [`references_vs_values_performance.rs`](src/estudios/references_vs_values_performance.rs) - References vs values benchmarks
+- [`stackframes.rs`](src/estudios/stackframes.rs) - Stack frames, passing variables
+- [`array_slice_vec_string.rs`](src/estudios/array_slice_vec_string.rs) - Arrays, slices, vectors, strings, and UTF-8 handling
+- [`traits_concepts.rs`](src/estudios/traits_concepts.rs) - Traits, implementations, impl/dyn, object safety
+- [`clousures.rs`](src/estudios/clousures.rs) - Closures: Fn, FnMut, FnOnce, captures, trait objects
+- [`sync_send.rs`](src/estudios/sync_send.rs) - Concurrency: Send, Sync, thread safety
+- [`pin.rs`](src/estudios/pin.rs) - Pin, Unpin, self-referential structs
+- [`futures.rs`](src/estudios/futures_async.rs) - Futures, async, await, async closures.
+- [`iterators.rs`](src/estudios/iterators.rs) - Iterators, adapters, lazy evaluation
+- [`syntax_sugar.rs`](src/estudios/syntax_sugar.rs) - Rust syntactic sugar
+- [`comparisons.rs`](src/estudios/comparisons.rs) - Eq, PartialEq, Ord, PartialOrd
+- [`error_result.rs`](src/estudios/error_result.rs) - Error handling, Result, Option, ? operator
+- [`modules_demo.rs`](src/estudios/modules_demo.rs) - Module organization strategies
 - [`testing_demo.rs`](src/estudios/testing_demo.rs) - Unit tests, property-based testing (proptest)
-- [`error_result.rs`](src/estudios/error_result.rs) - Error handling, Result, Option, operador ?
-- [`sync_send_demo.rs`](src/estudios/sync_send_demo.rs) - Concurrencia: Send, Sync, thread safety
-- [`pin_demo.rs`](src/estudios/pin_demo.rs) - Pin, Unpin, self-referential structs
-- [`futures_demo.rs`](src/estudios/futures_demo.rs) - Async/await, futures, executors
+- [`estructuras_ids.rs`](src/estudios/estructuras_ids.rs) - Structures with IDs, newtype pattern
 
 
-## Guía rápida: Ejecutar y depurar tests
+## Quick Guide: Running and Debugging Tests
 
-Este proyecto contiene múltiples demos y tests en [`src/estudios/`](src/estudios/). A continuación se explica cómo ejecutarlos y depurarlos, tanto desde VS Code como desde la consola.
+This project contains multiple demos and tests in [`src/estudios/`](src/estudios/). Below is an explanation of how to run and debug them from both VS Code and the console.
 
 ## VS Code: Rust Analyzer
 
-- Extensión recomendada: [`rust-analyzer`](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer).
-- Para depurar, instala también [`CodeLLDB`](https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb).
+- Recommended extension: [`rust-analyzer`](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer).
+- For debugging, also install [`CodeLLDB`](https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb).
 
-Cómo usarlo:
-- Abre cualquier archivo con tests (por ejemplo [`src/estudios/array_slice_vec_string.rs`](src/estudios/array_slice_vec_string.rs)).
-- Encima de cada `#[test]` verás CodeLens: "Run Test" y "Debug Test".
-	- "Run Test" ejecuta ese test individual.
-	- "Debug Test" lo lanza en el depurador (CodeLLDB).
-- Panel de Testing: abre el panel "Testing" de VS Code para ver todos los tests descubiertos y ejecutarlos en lote o individualmente.
+How to use it:
+- Open any file with tests (for example [`src/estudios/array_slice_vec_string.rs`](src/estudios/array_slice_vec_string.rs)).
+- Above each `#[test]` you will see CodeLens: "Run Test" and "Debug Test".
+	- "Run Test" runs that individual test.
+	- "Debug Test" launches it in the debugger (CodeLLDB).
+- Testing Panel: open the "Testing" panel in VS Code to see all discovered tests and run them in batch or individually.
 
-## Consola: `cargo test`
+## Console: `cargo test`
 
-Comandos útiles:
-- Listar todos los tests:
+Useful commands:
+- List all tests:
 	```bash
 	cargo test -- --list
 	```
 
-- Ejecutar un test individual (por ejemplo, slicing UTF-8 inválido):
+- Run an individual test (for example, invalid UTF-8 slicing):
 	```bash
 	cargo test --lib -- estudios::array_slice_vec_string::utf8_slicing::invalid_slice_panics -- --nocapture
 	```
 
-- Desactivar el backtrace en pánicos al ejecutar tests:
+- Disable backtrace on panics when running tests:
 	```bash
 	RUST_BACKTRACE=0 cargo test --lib -- estudios
 	```

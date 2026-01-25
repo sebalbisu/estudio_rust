@@ -1,38 +1,40 @@
-// Demo ejecutable que muestra las diferentes estrategias de módulos
+// Executable demo showing different module organization strategies
 
+#[allow(unused_imports)]
 use crate::modules_demo::domain;
+#[allow(unused_imports)]
 use crate::modules_demo::hybrid;
 
 /*
-RESUMEN DE ESTRATEGIAS:
+STRATEGY SUMMARY:
 
 ┌─────────────────────────────────────────────────────────────────┐
-│                     MONOLITHIC (1 archivo)                       │
+│                     MONOLITHIC (1 file)                         │
 ├─────────────────────────────────────────────────────────────────┤
 │ monolithic.rs                                                    │
 │   ├── User, UserRepo, UserService                               │
 │   ├── Order, OrderRepo, OrderService                            │
 │   └── Payment, PaymentRepo, PaymentService                      │
 │                                                                  │
-│ ✓ Simple para código pequeño (<200 líneas)                      │
-│ ✗ No escala, merge conflicts, acoplamiento                      │
+│ ✓ Simple for small code (<200 lines)                            │
+│ ✗ Doesn't scale, merge conflicts, coupling                      │
 └─────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────┐
-│                  DOMAIN (Por Feature/Vertical)                   │
+│                  DOMAIN (By Feature/Vertical)                   │
 ├─────────────────────────────────────────────────────────────────┤
 │ domain/                                                          │
 │   ├── user.rs    → User + UserRepo + UserService                │
 │   ├── order.rs   → Order + OrderRepo + OrderService             │
 │   └── payment.rs → Payment + PaymentRepo + PaymentService       │
 │                                                                  │
-│ ✓ Alta cohesión, bajo acoplamiento                              │
-│ ✓ Ideal para microservicios/DDD                                 │
-│ ✗ Puede duplicar código común                                   │
+│ ✓ High cohesion, low coupling                                   │
+│ ✓ Ideal for microservices/DDD                                   │
+│ ✗ May duplicate common code                                     │
 └─────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────┐
-│              HYBRID (Dominio + Capas Internas)                   │
+│              HYBRID (Domain + Internal Layers)                   │
 ├─────────────────────────────────────────────────────────────────┤
 │ hybrid/                                                          │
 │   └── user/                                                      │
@@ -40,69 +42,69 @@ RESUMEN DE ESTRATEGIAS:
 │       ├── repository.rs → UserRepository                         │
 │       └── service.rs    → UserService                            │
 │                                                                  │
-│ ✓ Mejor separación de responsabilidades                         │
-│ ✓ Testabilidad máxima                                            │
-│ ✓ Escalable para proyectos grandes                              │
-│ ✗ Más archivos, overhead inicial                                │
+│ ✓ Better separation of concerns                                 │
+│ ✓ Maximum testability                                            │
+│ ✓ Scalable for large projects                                   │
+│ ✗ More files, initial overhead                                  │
 └─────────────────────────────────────────────────────────────────┘
 
-GUÍA DE DECISIÓN:
+DECISION GUIDE:
 
-Tamaño del proyecto:
-- <200 líneas      → monolithic
-- 200-500 líneas   → domain
-- >500 líneas      → hybrid
+Project Size:
+|- <200 lines      → monolithic
+|- 200-500 lines   → domain
+|- >500 lines      → hybrid
 
-Equipo:
-- 1 desarrollador  → monolithic o domain
-- 2-5 devs         → domain
-- >5 devs          → hybrid
+Team:
+|- 1 developer     → monolithic or domain
+|- 2-5 devs        → domain
+|- >5 devs         → hybrid
 
-Complejidad:
-- CRUD simple      → domain
-- Lógica compleja  → hybrid
-- Microservicios   → domain
+Complexity:
+|- Simple CRUD     → domain
+|- Complex logic   → hybrid
+|- Microservices   → domain
 
-REGLAS GENERALES:
+GENERAL RULES:
 
-1. EMPEZAR SIMPLE
-   - Comenzar con domain/
-   - Migrar a hybrid/ cuando un dominio crece >300 líneas
+1. START SIMPLE
+   - Start with domain/
+   - Migrate to hybrid/ when a domain grows >300 lines
 
-2. PRIVADO POR DEFECTO
-   - Solo exponer API pública en mod.rs
-   - Detalles internos quedan privados
+2. PRIVATE BY DEFAULT
+   - Only expose public API in mod.rs
+   - Internal details remain private
 
-3. UN CONCEPTO = UN ARCHIVO
-   - User en user.rs o user/model.rs
-   - No mezclar User y Order en el mismo archivo
+3. ONE CONCEPT = ONE FILE
+   - User in user.rs or user/model.rs
+   - Don't mix User and Order in the same file
 
-4. TESTS JUNTO AL CÓDIGO
-   - #[cfg(test)] mod tests en el mismo archivo
-   - Tests de integración en tests/
+4. TESTS WITH THE CODE
+   - #[cfg(test)] mod tests in the same file
+   - Integration tests in tests/
 
-5. RE-EXPORTS LIMPIOS
-   - mod.rs hace re-exports para API limpia
-   - use crate::domain::User; (no domain::user::User)
+5. CLEAN RE-EXPORTS
+   - mod.rs does re-exports for clean API
+   - use crate::domain::User; (not domain::user::User)
 
 6. TESTS
-   - Unit tests → inline con #[cfg(test)] mod tests
-   - Integration tests → carpeta tests/ en raíz
-   - Tests muy grandes → archivo separado con #[path = "..."]
+   - Unit tests → inline with #[cfg(test)] mod tests
+   - Integration tests → tests/ folder in root
+   - Large tests → separate file with #[path = "..."]
 
-   ESTRUCTURA RECOMENDADA:
+   RECOMMENDED STRUCTURE:
    ┌─────────────────────────────────────────────────────────────────┐
    │ src/                                                            │
    │   └── domain/                                                   │
    │       └── user.rs          ← Unit tests inline (#[cfg(test)])  │
    │                                                                 │
-   │ tests/                     ← Integration tests (API pública)   │
+   │ tests/                     ← Integration tests (public API)    │
    │   ├── user_integration_test.rs                                 │
    │   └── common/                                                   │
-   │       └── mod.rs           ← Helpers compartidos               │
+   │       └── mod.rs           ← Shared helpers                     │
    └─────────────────────────────────────────────────────────────────┘
 
-   EJEMPLO UNIT TEST (inline):
+   UNIT TEST EXAMPLE (inline):
    ┌─────────────────────────────────────────────────────────────────┐
    │ // user.rs                                                      │
    │ pub struct User { ... }                                         │
@@ -118,7 +120,7 @@ REGLAS GENERALES:
    │ }                                                               │
    └─────────────────────────────────────────────────────────────────┘
 
-   EJEMPLO INTEGRATION TEST (tests/):
+   INTEGRATION TEST EXAMPLE (tests/):
    ┌─────────────────────────────────────────────────────────────────┐
    │ // tests/user_integration_test.rs                               │
    │ use estudio_01::domain::User;                                   │
@@ -130,11 +132,11 @@ REGLAS GENERALES:
    │ }                                                               │
    └─────────────────────────────────────────────────────────────────┘
 
-   ARCHIVO SEPARADO (tests grandes):
+   SEPARATE FILE (large tests):
    ┌─────────────────────────────────────────────────────────────────┐
    │ src/domain/                                                     │
    │   ├── user.rs                                                   │
-   │   └── user_tests.rs        ← Tests en archivo separado         │
+   │   └── user_tests.rs        ← Tests in separate file            │
    │                                                                 │
    │ // user.rs                                                      │
    │ pub struct User { ... }                                         │
@@ -144,38 +146,39 @@ REGLAS GENERALES:
    │ mod tests;                                                      │
    └─────────────────────────────────────────────────────────────────┘
 
-   COMPARACIÓN:
+   COMPARISON:
    ┌────────────────┬──────────────┬───────────────────────────────┐
-   │ Tipo           │ Ubicación    │ Acceso                        │
+   │ Type           │ Location     │ Access                        │
    ├────────────────┼──────────────┼───────────────────────────────┤
-   │ Unit tests     │ inline       │ pub + privado (use super::*)  │
-   │ Unit separado  │ _tests.rs    │ pub + privado (use super::*)  │
-   │ Integration    │ tests/       │ Solo pub (API externa)        │
+   │ Unit tests     │ inline       │ pub + private (use super::*)  │
+   │ Unit separate  │ _tests.rs    │ pub + private (use super::*)  │
+   │ Integration    │ tests/       │ Only pub (external API)       │
    └────────────────┴──────────────┴───────────────────────────────┘
 */
 
-fn main() {
-    println!("=== DEMOSTRACIÓN DE ESTRATEGIAS DE MÓDULOS EN RUST ===\n");
+#[test]
+fn index() {
+    println!("=== RUST MODULE ORGANIZATION STRATEGIES DEMO ===\n");
 
     // ============================================================
-    // 1. ESTRATEGIA POR DOMINIO (domain/)
+    // 1. DOMAIN STRATEGY (domain/)
     // ============================================================
-    println!("--- 1. ESTRATEGIA POR DOMINIO ---");
-    println!("Todo relacionado a User en un archivo: domain/user.rs\n");
+    println!("--- 1. DOMAIN STRATEGY ---");
+    println!("Everything related to User in one file: domain/user.rs\n");
 
     let mut user_service = domain::UserService::new();
 
     let user1 = user_service
         .create_user("Alice".to_string(), "alice@example.com".to_string())
         .unwrap();
-    println!("✓ Usuario creado: {:?}", user1);
+    println!("✓ User created: {:?}", user1);
 
     let user2 = user_service
         .create_user("Bob".to_string(), "bob@example.com".to_string())
         .unwrap();
-    println!("✓ Usuario creado: {:?}", user2);
+    println!("✓ User created: {:?}", user2);
 
-    // Crear orden usando domain::order
+    // Create order using domain::order
     let mut order_service = domain::OrderService::new();
     let items = vec![domain::OrderItem {
         product_id: 101,
@@ -184,127 +187,127 @@ fn main() {
     }];
 
     let order = order_service.create_order(user1.id, items).unwrap();
-    println!("✓ Orden creada: ID={}, Total=${:.2}", order.id, order.total);
+    println!("✓ Order created: ID={}, Total=${:.2}", order.id, order.total);
 
     let all_users = user_service.get_all_users();
-    println!("\n📋 Total de usuarios: {}", all_users.len());
+    println!("\n📋 Total users: {}", all_users.len());
 
     // ============================================================
-    // 2. ESTRATEGIA HÍBRIDA (hybrid/)
+    // 2. HYBRID STRATEGY (hybrid/)
     // ============================================================
-    println!("\n--- 2. ESTRATEGIA HÍBRIDA ---");
-    println!("Dominio User separado en capas: model.rs, repository.rs, service.rs\n");
+    println!("\n--- 2. HYBRID STRATEGY ---");
+    println!("User domain split into layers: model.rs, repository.rs, service.rs\n");
 
     let mut hybrid_service = hybrid::UserService::new();
 
     let user3 = hybrid_service
         .create_user("Charlie".to_string(), "charlie@example.com".to_string())
         .unwrap();
-    println!("✓ Usuario creado: {:?}", user3);
+    println!("✓ User created: {:?}", user3);
 
     hybrid_service
         .update_email(user3.id, "charlie.new@example.com".to_string())
         .unwrap();
-    println!("✓ Email actualizado");
+    println!("✓ Email updated");
 
     let updated_user = hybrid_service.get_user(user3.id).unwrap();
-    println!("✓ Usuario después de actualización: {:?}", updated_user);
+    println!("✓ User after update: {:?}", updated_user);
 
     println!(
-        "\n📋 Total de usuarios (hybrid): {}",
+        "\n📋 Total users (hybrid): {}",
         hybrid_service.user_count()
     );
 
     // ============================================================
-    // 3. COMPARACIÓN DE IMPORTS
+    // 3. IMPORTS COMPARISON
     // ============================================================
-    println!("\n--- 3. COMPARACIÓN DE IMPORTS ---\n");
+    println!("\n--- 3. IMPORTS COMPARISON ---\n");
 
     println!("DOMAIN (Vertical Slicing):");
     println!("  use modules_demo::domain::{{User, UserService}};");
     println!("  use modules_demo::domain::{{Order, OrderService}};");
-    println!("  ✓ API limpia, todo relacionado a User junto\n");
+    println!("  ✓ Clean API, everything related to User together\n");
 
-    println!("HYBRID (Dominio + Capas):");
+    println!("HYBRID (Domain + Layers):");
     println!("  use modules_demo::hybrid::{{User, UserService}};");
-    println!("  // Repository NO está expuesto (implementación interna)");
-    println!("  ✓ API más limpia, detalles internos ocultos\n");
+    println!("  // Repository is NOT exposed (internal implementation)");
+    println!("  ✓ Cleaner API, internal details hidden\n");
 
     // ============================================================
-    // 4. VENTAJAS Y DESVENTAJAS
+    // 4. ADVANTAGES AND DISADVANTAGES
     // ============================================================
-    println!("--- 4. CUÁNDO USAR CADA ESTRATEGIA ---\n");
+    println!("--- 4. WHEN TO USE EACH STRATEGY ---\n");
 
-    println!("MONOLÍTICO (1 archivo):");
-    println!("  ✓ Scripts <200 líneas");
-    println!("  ✓ Prototipos rápidos");
-    println!("  ✗ No escala, merge conflicts\n");
+    println!("MONOLITHIC (1 file):");
+    println!("  ✓ Scripts <200 lines");
+    println!("  ✓ Quick prototypes");
+    println!("  ✗ Doesn't scale, merge conflicts\n");
 
-    println!("POR DOMINIO (domain/):");
-    println!("  ✓ Features independientes");
-    println!("  ✓ 200-500 líneas por dominio");
-    println!("  ✓ Microservicios/DDD");
-    println!("  ✗ Puede duplicar código común\n");
+    println!("BY DOMAIN (domain/):");
+    println!("  ✓ Independent features");
+    println!("  ✓ 200-500 lines per domain");
+    println!("  ✓ Microservices/DDD");
+    println!("  ✗ May duplicate common code\n");
 
-    println!("HÍBRIDO (hybrid/):");
-    println!("  ✓ >500 líneas por dominio");
-    println!("  ✓ Lógica de negocio compleja");
-    println!("  ✓ Múltiples capas (MVC, Clean Architecture)");
-    println!("  ✓ Equipos grandes");
-    println!("  ✗ Overhead inicial (más archivos)\n");
+    println!("HYBRID (hybrid/):");
+    println!("  ✓ >500 lines per domain");
+    println!("  ✓ Complex business logic");
+    println!("  ✓ Multiple layers (MVC, Clean Architecture)");
+    println!("  ✓ Large teams");
+    println!("  ✗ Initial overhead (more files)\n");
 
     // ============================================================
-    // 5. RECOMENDACIONES
+    // 5. RECOMMENDATIONS
     // ============================================================
-    println!("--- 5. RECOMENDACIONES ---\n");
+    println!("--- 5. RECOMMENDATIONS ---\n");
 
-    println!("1. EMPEZAR SIMPLE:");
-    println!("   - Comenzar con domain/ (1 archivo por feature)");
-    println!("   - Migrar a hybrid/ cuando crece >300 líneas\n");
+    println!("1. START SIMPLE:");
+    println!("   - Start with domain/ (1 file per feature)");
+    println!("   - Migrate to hybrid/ when it grows >300 lines\n");
 
-    println!("2. PRIVADO POR DEFECTO:");
-    println!("   - Solo hacer `pub` lo necesario");
-    println!("   - Usar `pub(crate)` para API interna del crate\n");
+    println!("2. PRIVATE BY DEFAULT:");
+    println!("   - Only make `pub` what is necessary");
+    println!("   - Use `pub(crate)` for internal crate API\n");
 
-    println!("3. RE-EXPORTS EN mod.rs:");
-    println!("   - Hacer API pública limpia");
-    println!("   - Ocultar detalles de implementación\n");
+    println!("3. RE-EXPORTS IN mod.rs:");
+    println!("   - Create clean public API");
+    println!("   - Hide implementation details\n");
 
-    println!("4. TESTS JUNTO AL CÓDIGO:");
-    println!("   - #[cfg(test)] mod tests en mismo archivo");
-    println!("   - Tests de integración en tests/\n");
+    println!("4. TESTS ALONGSIDE CODE:");
+    println!("   - #[cfg(test)] mod tests in same file");
+    println!("   - Integration tests in tests/\n");
 
-    println!("5. ESTRUCTURA POR PROYECTO:");
+    println!("5. STRUCTURE BY PROJECT:");
     println!("   - CLI tool        → domain/");
     println!("   - Web API         → hybrid/");
-    println!("   - Librería        → domain/ o hybrid/");
-    println!("   - Microservicio   → domain/\n");
+    println!("   - Library         → domain/ or hybrid/");
+    println!("   - Microservice    → domain/\n");
 
     // ============================================================
-    // 6. ORGANIZACIÓN DE TESTS
+    // 6. TEST ORGANIZATION
     // ============================================================
-    println!("--- 6. ORGANIZACIÓN DE TESTS ---\n");
+    println!("--- 6. TEST ORGANIZATION ---\n");
 
-    println!("UNIT TESTS (inline, recomendado):");
+    println!("UNIT TESTS (inline, recommended):");
     println!("   #[cfg(test)]");
     println!("   mod tests {{");
     println!("       use super::*;");
     println!("       #[test]");
     println!("       fn test_valid_email() {{ ... }}");
     println!("   }}");
-    println!("   ✓ Tests cerca del código, fácil refactorizar\n");
+    println!("   ✓ Tests near code, easy to refactor\n");
 
-    println!("INTEGRATION TESTS (tests/ en raíz):");
+    println!("INTEGRATION TESTS (tests/ in root):");
     println!("   tests/");
     println!("     └── user_integration_test.rs");
-    println!("   ✓ Prueban API pública, sin acceso a privado\n");
+    println!("   ✓ Tests public API, no access to private\n");
 
-    println!("UNIT TESTS SEPARADOS (archivos grandes):");
+    println!("SEPARATE UNIT TESTS (large files):");
     println!("   src/domain/");
     println!("     ├── user.rs");
     println!("     └── user_tests.rs");
-    println!("   En user.rs: #[cfg(test)] #[path = \"user_tests.rs\"] mod tests;");
-    println!("   ✓ Separa código de tests cuando son muy grandes\n");
+    println!("   In user.rs: #[cfg(test)] #[path = \"user_tests.rs\"] mod tests;");
+    println!("   ✓ Separates code from tests when very large\n");
 
-    println!("=== FIN DE LA DEMO ===");
+    println!("=== END OF DEMO ===");
 }

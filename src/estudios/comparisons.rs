@@ -1,10 +1,7 @@
 #[allow(unused_variables)]
 #[allow(dead_code)]
 #[test]
-pub fn indice() {
-    println!("\n════════════════════════════════════════════════");
-    println!("Módulo: Comparaciones - Equal, Partial y Greater");
-    println!("════════════════════════════════════════════════");
+pub fn index() {
 
     traits::test_partial_eq_manual();
     traits::test_partial_eq_derive();
@@ -15,28 +12,28 @@ pub fn indice() {
     traits::test_ord_derive();
     traits::test_ord_manual();
 
-    tipos_primitivos::test_bool();
-    tipos_primitivos::test_char();
-    tipos_primitivos::test_integers();
-    tipos_primitivos::test_floats();
-    tipos_primitivos::test_strings();
+    primitive_types::test_bool();
+    primitive_types::test_char();
+    primitive_types::test_integers();
+    primitive_types::test_floats();
+    primitive_types::test_strings();
 
-    referencias_vs_punteros::test_referencias_iguales();
-    referencias_vs_punteros::test_punteros_direcciones();
-    referencias_vs_punteros::test_punteros_heap();
-    referencias_vs_punteros::test_referencias_vs_punteros();
+    references_vs_pointers::test_references_equal();
+    references_vs_pointers::test_pointers_addresses();
+    references_vs_pointers::test_pointers_heap();
+    references_vs_pointers::test_references_vs_pointers();
 
-    colecciones::test_arrays();
-    colecciones::test_slices();
-    colecciones::test_vectores();
-    colecciones::test_orden_colecciones();
+    collections::test_arrays();
+    collections::test_slices();
+    collections::test_vectors();
+    collections::test_collections_order();
 
-    tipos_compuestos::test_enum_ord();
-    tipos_compuestos::test_custom_impl();
+    compound_types::test_enum_ord();
+    compound_types::test_custom_impl();
 
-    tuplas::test_tuples_eq();
-    tuplas::test_tuples_ord();
-    tuplas::test_nested_tuples();
+    tuples::test_tuples_eq();
+    tuples::test_tuples_ord();
+    tuples::test_nested_tuples();
 }
 
 /*
@@ -49,9 +46,9 @@ pub fn indice() {
 #[cfg(test)]
 mod traits {
     /*
-    ═════════════════════════════════════════════════════════════════════════════
+    ----------------------------------------------
     PartialEq
-    ═════════════════════════════════════════════════════════════════════════════
+    ----------------------------------------------
 
         pub trait PartialEq<Rhs = Self>
         where
@@ -59,20 +56,20 @@ mod traits {
         {
             fn eq(&self, other: &Rhs) -> bool;
 
-            // Implementaciones por defecto:
+            // Default implementations:
             fn ne(&self, other: &Rhs) -> bool {
                 !self.eq(other)
             }
         }
 
 
-    QUÉ HACE:
-    • Define el operador ==  y !==
-    • NO requiere reflexividad (a == a puede ser false, ej: NaN) <- importante
-    • Pueden haber valores "incomparables", ej NaN
+    WHAT IT DOES:
+    • Defines == and !=  operators
+    • Does NOT require reflexivity (a == a can be false, e.g: NaN) <- important
+    • There can be "incomparable" values, e.g NaN
     */
 
-    // Implementacion Manual de PartialEq:
+    // Manual implementation of PartialEq:
     #[test]
     pub fn test_partial_eq_manual() {
         #[derive(Debug)]
@@ -90,7 +87,7 @@ mod traits {
         assert_ne!(Age(30), Age(25));
     }
 
-    // Implementacion automática con derive de PartialEq:
+    // Automatic implementation with derive of PartialEq:
     #[test]
     pub fn test_partial_eq_derive() {
         #[derive(PartialEq, Debug)]
@@ -107,27 +104,27 @@ mod traits {
             name: "Alice".into(),
             age: 30,
         };
-        assert!(p1 == p2); // Compara: name == name AND age == age         
+        assert!(p1 == p2); // Compares: name == name AND age == age
     }
 
     /*
-    ═════════════════════════════════════════════════════════════════════════════
+    ----------------------------------------------
     Eq
-    ═════════════════════════════════════════════════════════════════════════════
+    ----------------------------------------------
 
         pub trait Eq: PartialEq<Self> {
-            // Sin métodos adicionales
-            // Solo marca que PartialEq es reflexivo ( a == a SIEMPRE es true )
+            // No additional methods
+            // Just marks that PartialEq is reflexive ( a == a is ALWAYS true )
         }
 
-        QUÉ HACE:
-        • Extiende PartialEq
-        • Garantiza REFLEXIVIDAD: a == a SIEMPRE es true
-        • Se usa para tipos que NO tienen valores incomparables
-        • Es un "marker trait" (sin métodos, solo propiedades matemáticas)
+        WHAT IT DOES:
+        • Extends PartialEq
+        • Guarantees REFLEXIVITY: a == a is ALWAYS true
+        • Used for types that do NOT have incomparable values
+        • It's a "marker trait" (no methods, just mathematical properties)
     */
 
-    // Implementacion Manual de Eq:
+    // Manual implementation of Eq:
     #[test]
     pub fn test_eq_manual() {
         #[derive(Debug)]
@@ -145,30 +142,30 @@ mod traits {
         impl Eq for Point {}
 
         let p = Point { x: 5, y: 10 };
-        assert_eq!(p, p); // ✓ Reflexividad garantizada
+        assert_eq!(p, p); // ✓ Reflexivity guaranteed
     }
 
-    // Implementacion automática con derive de Eq:
+    // Automatic implementation with derive of Eq:
     #[test]
     pub fn test_eq_derive() {
         #[derive(PartialEq, Eq, Debug)]
         struct UserId(u64);
 
         let id1 = UserId(123);
-        assert_eq!(id1, id1); // Reflexividad: garantizado por Eq
+        assert_eq!(id1, id1); // Reflexivity: guaranteed by Eq
     }
     /*
-    ═════════════════════════════════════════════════════════════════════════════
+    ----------------------------------------------
     PartialOrd
-    ═════════════════════════════════════════════════════════════════════════════
+    ----------------------------------------------
 
         pub trait PartialOrd<Rhs = Self>
         where
-            Rhs: ?Sized,   // permite tipos con tamaño fijo o dinamico (conocido en runtime)
+            Rhs: ?Sized,   // allows fixed-size or dynamic types (known at runtime)
         {
             fn partial_cmp(&self, other: &Rhs) -> Option<Ordering>;
 
-            // Implementaciones por defecto:
+            // Default implementations:
             fn lt(&self, other: &Rhs) -> bool {
                 matches!(self.partial_cmp(other), Some(Ordering::Less))
             }
@@ -183,18 +180,18 @@ mod traits {
             }
         }
 
-        QUÉ HACE:
-        • Define operadores <, <=, >, >=
-        • Retorna Option<Ordering> (pueden ser incomparables, ej: NaN) <- importante
-        • REQUIERE implementar PartialEq primero
+        WHAT IT DOES:
+        • Defines <, <=, >, >= operators
+        • Returns Option<Ordering> (can be incomparable, e.g: NaN) <- important
+        • REQUIRES implementing PartialEq first
 
-        OPERADORES QUE IMPLEMENTA:
+        OPERATORS IT IMPLEMENTS:
         • <, <=, >, >=
-        • partial_cmp() → Option<Ordering> (si se pudo comparar o no)
+        • partial_cmp() → Option<Ordering> (whether comparison succeeded or not)
 
     */
 
-    // Implementacion automática con derive de PartialOrd:
+    // Automatic implementation with derive of PartialOrd:
     #[test]
     pub fn test_partial_ord_derive() {
         #[derive(PartialEq, PartialOrd)]
@@ -202,19 +199,19 @@ mod traits {
 
         let s1 = Score(85.5);
         let s2 = Score(90.0);
-        // operadores de comparación
+        // comparison operators
         assert_eq!(s1 < s2, true);
         assert_eq!(s1 <= s2, true);
         assert_eq!(s2 > s1, true);
         assert_eq!(s2 >= s1, true);
 
-        // Permite saber si se puede comparar o no
+        // Allows knowing whether comparison is possible or not
         let nan_score = Score(f64::NAN);
         assert_eq!(nan_score < s1, false);
         assert_eq!(nan_score.partial_cmp(&s1), None); // Option<Ordering>
     }
 
-    // Implementacion Manual de PartialOrd:
+    // Manual implementation of PartialOrd:
     #[test]
     pub fn test_partial_ord_manual() {
         use std::cmp::Ordering;
@@ -239,26 +236,26 @@ mod traits {
         assert_eq!(d1.partial_cmp(&d2), Some(Ordering::Less));
     }
     /*
-    ═════════════════════════════════════════════════════════════════════════════
+    ----------------------------------------------
     4. Ord TRAIT
-    ═════════════════════════════════════════════════════════════════════════════
+    ----------------------------------------------
 
         pub trait Ord: Eq + PartialOrd<Self> {
             fn cmp(&self, other: &Self) -> Ordering;
         }
 
-        QUÉ HACE:
-        • Define "orden total": TODOS los elementos son comparables <- importante
-        • Retorna Ordering directo (NO Option)
-        • REQUIERE implementar Eq y PartialOrd primero
+        WHAT IT DOES:
+        • Defines "total order": ALL elements are comparable <- important
+        • Returns Ordering directly (NOT Option)
+        • REQUIRES implementing Eq and PartialOrd first
 
-        OPERADORES QUE IMPLEMENTA:
-        • <, <=, >, >= (heredados de PartialOrd)
-        • cmp() → Ordering directo
+        OPERATORS IT IMPLEMENTS:
+        • <, <=, >, >= (inherited from PartialOrd)
+        • cmp() → direct Ordering
 
     */
 
-    // Implementacion automática con derive de Ord:
+    // Automatic implementation with derive of Ord:
     #[test]
     pub fn test_ord_derive() {
         use std::cmp::Ordering;
@@ -279,7 +276,7 @@ mod traits {
         assert_eq!(levels[0].level, 1);
     }
 
-    // Implementacion Manual de Ord:
+    // Manual implementation of Ord:
     #[test]
     pub fn test_ord_manual() {
         use std::cmp::Ordering;
@@ -313,9 +310,9 @@ mod traits {
 
     /*
 
-    ═════════════════════════════════════════════════════════════════════════════
-    JERARQUÍA DE TRAITS Y REQUISITOS
-    ═════════════════════════════════════════════════════════════════════════════
+    ----------------------------------------------
+    TRAIT HIERARCHY AND REQUIREMENTS
+    ----------------------------------------------
 
 
                               PartialEq (==, !=) (eq, ne)
@@ -331,23 +328,23 @@ mod traits {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// MÓDULO 1: COMPARACIÓN DE TIPOS PRIMITIVOS
+// MODULE 1: COMPARISON OF PRIMITIVE TYPES
 // ═════════════════════════════════════════════════════════════════════════════
 #[cfg(test)]
-mod tipos_primitivos {
+mod primitive_types {
     /*
-    COMPARACIÓN DE TIPOS PRIMITIVOS
+    COMPARISON OF PRIMITIVE TYPES
 
-    bool    → TRUE/FALSE: igualdad y ordenamiento (false < true)
-    int     → i8, i16, i32, i64, isize: comparación total
-    uint    → u8, u16, u32, u64, usize: comparación total
-    float   → f32, f64: PartialOrd/PartialEq (NaN rompe Eq)
-        NaN != float es siempre true
-        NaN < <= > >= float, es siempre false
-    char    → Compara por valor Unicode
+    bool    → TRUE/FALSE: equality and ordering (false < true)
+    int     → i8, i16, i32, i64, isize: total comparison
+    uint    → u8, u16, u32, u64, usize: total comparison
+    float   → f32, f64: PartialOrd/PartialEq (NaN breaks Eq)
+        NaN != float is always true
+        NaN < <= > >= float, is always false
+    char    → Compares by Unicode value
         '😀' = U+1F600 = 128512 (decimal)
         'a'  = U+0061  = 97 (decimal)
-    String  → &str,  compara como si fuesen varios chars, Lexicográfico por valor de código Unicode
+    String  → &str,  compares as if they were multiple chars, Lexicographic by Unicode code value
         '😀' = U+1F600 = 128512 (decimal)
         'a'  = U+0061  = 97 (decimal)
     */
@@ -364,7 +361,7 @@ mod tipos_primitivos {
     pub fn test_char() {
         assert_eq!('a' == 'a', true);
         assert_eq!('a' != 'b', true);
-        assert_eq!('a' < 'b', true); // Compara código Unicode
+        assert_eq!('a' < 'b', true); // Compares Unicode code
         assert_eq!('0' < '9', true); // '0' = U+0030, '9' = U+0039
         assert_eq!('A' < 'a', true); // U+0041 < U+0061
         assert_eq!('a' < '😀', true); // 'a' = U+0061 (97), '😀' = U+1F600 (128512)
@@ -381,7 +378,7 @@ mod tipos_primitivos {
         assert_eq!(a < b, true);
         assert_eq!(b > a, true);
 
-        // Diferentes tipos requieren casting
+        // Different types require casting
         let x: i8 = 10;
         let y: u32 = 10;
         assert_eq!(x as u32 == y, true);
@@ -393,20 +390,20 @@ mod tipos_primitivos {
         let b: f64 = 3.14;
         let nan = f64::NAN;
 
-        // Igualdad normal
+        // Normal equality
         assert_eq!(a == b, true);
         assert_eq!(a != (a + 1.0), true);
 
-        // NaN != NaN, (no reflexivo) PartialEq
-        // NaN != float (no comparable) PartialEq
-        // NaN < <= > >= float, siempre es false (no ordenable) PartialOrd
+        // NaN != NaN, (not reflexive) PartialEq
+        // NaN != float (not comparable) PartialEq
+        // NaN < <= > >= float, is always false (not orderable) PartialOrd
 
-        // ⚠️ NaN rompe reflexividad
+        // ⚠️ NaN breaks reflexivity
         assert_eq!(nan == nan, false); // ¡¡NaN ≠ NaN!!
-        assert_eq!(nan < 0.0, false); // NaN < X siempre false
-        assert_eq!(nan > 0.0, false); // NaN > X siempre false
-        assert_eq!(nan == 0.0, false); // NaN == X siempre false
-        assert!(nan != nan); // Esto es TRUE
+        assert_eq!(nan < 0.0, false); // NaN < X always false
+        assert_eq!(nan > 0.0, false); // NaN > X always false
+        assert_eq!(nan == 0.0, false); // NaN == X always false
+        assert!(nan != nan); // This is TRUE
     }
 
     #[test]
@@ -415,19 +412,19 @@ mod tipos_primitivos {
         let s2 = "apple";
         let s3 = "banana";
 
-        // Comparación de valores
+        // Value comparison
         assert_eq!(s1 == s2, true);
         assert_eq!(s1 != s3, true);
 
-        // Orden lexicográfico (alfabético)
+        // Lexicographic order (alphabetical)
         assert_eq!(s1 < s3, true); // "apple" < "banana"
-        assert_eq!("abc" < "abd", true); // Compara punto a punto
-        assert_eq!("a" < "aa", true); // Prefijo es menor
-        assert_eq!("hola_😀" > "hola_a", true); // '😀' = U+1F600 (128512) > 'a' = U+0061 (97)
+        assert_eq!("abc" < "abd", true); // Compares point by point
+        assert_eq!("a" < "aa", true); // Prefix is less
+        assert_eq!("hello_😀" > "hello_a", true); // '😀' = U+1F600 (128512) > 'a' = U+0061 (97)
 
         // String vs &str
         let owned = String::from("apple");
-        assert_eq!(owned == s1, true); // Se dereferencia automáticamente
+        assert_eq!(owned == s1, true); // Automatically dereferenced
     }
 }
 
@@ -435,20 +432,20 @@ mod tipos_primitivos {
 Float
 
 ═════════════════════════════════════════════════════════════════════════════
-NaN (Not a Number) EN FLOATS
+NaN (Not a Number) IN FLOATS
 ═════════════════════════════════════════════════════════════════════════════
 
-1. CUÁNDO APARECE NaN
+1. WHEN NaN APPEARS
 ─────────────────────────────────────────────────────────────────────────────
 
-    NaN es la solucion al problema matemático de representar un valor que no es un número inderminado. por ejemplo 0.0 / 0.0
+    NaN is the solution to the problem of representing a value that is an indeterminate number. for example 0.0 / 0.0
 
-    * Hardware nativo lo soporta
-    * Esto permite que el cálculo continúe sin paniquear (fault tolerance)
-    * Detección fácil: .is_nan() al final en lugar de try/catch
-    * Compatible con librerías matemáticas complejas
+    * Hardware natively supports it
+    * This allows the calculation to continue without panicking (fault tolerance)
+    * Easy detection: .is_nan() at the end instead of try/catch
+    * Compatible with complex math libraries
 
-  A) OPERACIONES MATEMÁTICAS INDETERMINADAS:
+  A) INDETERMINATE MATHEMATICAL OPERATIONS:
      0.0 / 0.0 = NaN
      Inf - Inf = NaN
      Inf / Inf = NaN
@@ -458,209 +455,209 @@ NaN (Not a Number) EN FLOATS
      (-5.0).ln() = NaN
      (-2.0).log10() = NaN
 
-  C) OPERACIONES CON NaN: (propagación de NaN)
-     NaN + 5.0               → NaN      (NaN propaga)
-     NaN * 0.0               → NaN      (NaN propaga)
-     NaN / 2.0               → NaN      (NaN propaga)
-     (5.0).min(NaN)          → NaN      (min con NaN = NaN)
+  C) OPERATIONS WITH NaN: (NaN propagation)
+     NaN + 5.0               → NaN      (NaN propagates)
+     NaN * 0.0               → NaN      (NaN propagates)
+     NaN / 2.0               → NaN      (NaN propagates)
+     (5.0).min(NaN)          → NaN      (min with NaN = NaN)
 
-  D) CONSTANTE DIRECTA:
-     f64::NAN                → NaN      (constante predefinida)
-     f32::NAN                → NaN      (en f32)
+  D) DIRECT CONSTANT:
+     f64::NAN                → NaN      (predefined constant)
+     f32::NAN                → NaN      (in f32)
 
-  E) PARSING "Nan" de STRING:
-     "NaN".parse::<f64>()    → Ok(NaN)  (parse exitoso de "NaN")
-     "nan".parse::<f64>()    → Error    (Rust es case-sensitive)
-     "NAN".parse::<f64>()    → Error    (debe ser exactamente "NaN")
+  E) PARSING "NaN" FROM STRING:
+     "NaN".parse::<f64>()    → Ok(NaN)  (successful "NaN" parse)
+     "nan".parse::<f64>()    → Error    (Rust is case-sensitive)
+     "NAN".parse::<f64>()    → Error    (must be exactly "NaN")
 
-  F) PARSING ERRÓNEO NO PRODUCE NaN: produce Err
+  F) ERRONEOUS PARSING DOES NOT PRODUCE NaN: produces Err
      "abc".parse::<f64>()    → Err
      "12.34.56".parse()      → Err
      "".parse::<f64>()       → Err
 
 
-2. COMPARACIONES CON NaN
+2. COMPARISONS WITH NaN
 ─────────────────────────────────────────────────────────────────────────────
 
-  A) REFLEXIVIDAD ROTA (problema principal):
-     NaN == NaN  : false    ⚠️ (¡¡No es igual a sí mismo!!)
-     NaN == (any float) : false    (son distintos)
+  A) BROKEN REFLEXIVITY (main problem):
+     NaN == NaN  : false    ⚠️ (¡¡Not equal to itself!!)
+     NaN == (any float) : false    (they are different)
 
-  B) COMPARACIONES ORDENADAS (todas falsas):
+  B) ORDERED COMPARISONS (all false):
      NaN < <= > >= (any float) : false
      (any float) < <= > >= NaN : false
 
 
 ═════════════════════════════════════════════════════════════════════════════
-INFINITO (Inf) EN FLOATS
+INFINITY (Inf) IN FLOATS
 ═════════════════════════════════════════════════════════════════════════════
 
-1. CUÁNDO APARECE INFINITO
+1. WHEN INFINITY APPEARS
 ─────────────────────────────────────────────────────────────────────────────
-    +Inf representa un valor numérico que es más grande que cualquier otro número finito.
-    -Inf representa un valor numérico que es más pequeño que cualquier otro número finito.
+    +Inf represents a numerical value that is larger than any other finite number.
+    -Inf represents a numerical value that is smaller than any other finite number.
     f64::MAX < Inf
 
-  A) DIVISIÓN POR CERO:
-     1.0 / 0.0    → +Inf (infinito positivo)
-     -1.0 / 0.0   → -Inf (infinito negativo)
+  A) DIVISION BY ZERO:
+     1.0 / 0.0    → +Inf (positive infinity)
+     -1.0 / 0.0   → -Inf (negative infinity)
      5.0 / 0.0    → +Inf
 
-  B) DESBORDAMIENTO (overflow):
+  B) OVERFLOW:
      f64::MAX + f64::MAX     → +Inf
      f64::MAX * 2.0          → +Inf
-     10.0_f64.powi(400)      → +Inf (número muy grande)
+     10.0_f64.powi(400)      → +Inf (very large number)
 
-  C) CONSTANTES DIRECTAS:
+  C) DIRECT CONSTANTS:
      f64::INFINITY           → +Inf
      f64::NEG_INFINITY       → -Inf
-     f32::INFINITY           → +Inf (en f32)
+     f32::INFINITY           → +Inf (in f32)
 
-  D) PARSING DE STRING:
+  D) STRING PARSING:
      "inf".parse::<f64>()    → Ok(f64::INFINITY)
      "-inf".parse::<f64>()   → Ok(f64::NEG_INFINITY)
-     "Infinity".parse()      → Error (no válido en Rust)
+     "Infinity".parse()      → Error (not valid in Rust)
 
 
-2. OPERACIONES CON INFINITO
+2. OPERATIONS WITH INFINITY
 ─────────────────────────────────────────────────────────────────────────────
 
-  A) ARITMÉTICA BÁSICA:
-    Inf + - * / (float finito): Inf
+  A) BASIC ARITHMETIC:
+    Inf + - * / (finite float): Inf
 
-  B) CASOS INDETERMINADOS (retornan NaN):
-     Inf - Inf       → NaN         (indeterminado)
-     Inf + (-Inf)    → NaN         (indeterminado)
-     Inf / Inf       → NaN         (indeterminado)
-     Inf * 0.0       → NaN         (indeterminado)
-     Inf + - NaN     → NaN         (NaN propaga)
+  B) INDETERMINATE CASES (return NaN):
+     Inf - Inf       → NaN         (indeterminate)
+     Inf + (-Inf)    → NaN         (indeterminate)
+     Inf / Inf       → NaN         (indeterminate)
+     Inf * 0.0       → NaN         (indeterminate)
+     Inf + - NaN     → NaN         (NaN propagates)
 
-  C) OPERACIONES CON CERO:
+  C) OPERATIONS WITH ZERO:
      0.0 * Inf       → NaN
-     0.0 / Inf       → 0.0         (cero es "pequeño" comparado a Inf)
+     0.0 / Inf       → 0.0         (zero is "small" compared to Inf)
 
-  D) INFINITO NEGATIVO:
+  D) NEGATIVE INFINITY:
      -Inf + 100      → -Inf
      -Inf - 100      → -Inf
-     -Inf * -1.0     → +Inf        (negativo × negativo = positivo)
+     -Inf * -1.0     → +Inf        (negative × negative = positive)
 
 
-3. COMPARACIONES CON INFINITO
+3. COMPARISONS WITH INFINITY
 ─────────────────────────────────────────────────────────────────────────────
 
-  A) REFLEXIVIDAD (igual a sí mismo): Eq
-     Inf == Inf              → true   ✓ (a diferencia de NaN)
+  A) REFLEXIVITY (equal to itself): Eq
+     Inf == Inf              → true   ✓ (unlike NaN)
      -Inf == -Inf            → true   ✓
-     Inf == -Inf             → false  (signos opuestos)
+     Inf == -Inf             → false  (opposite signs)
 
-  B) COMPARACIONES DE ORDEN: Ord
-     Inf > Inf              → false  (no mayor que sí mismo)
-     Inf > 1e308            → true   (mayor que cualquier número finito)
-     -Inf < -1e308          → true   (menor que cualquier número finito)
+  B) ORDER COMPARISONS: Ord
+     Inf > Inf              → false  (not greater than itself)
+     Inf > 1e308            → true   (greater than any finite number)
+     -Inf < -1e308          → true   (less than any finite number)
      Inf > -Inf             → true
-     Inf >= > < <= NaN      → false  (NaN rompe comparaciones)
+     Inf >= > < <= NaN      → false  (NaN breaks comparisons)
 
 */
 
 // ═════════════════════════════════════════════════════════════════════════════
-// MÓDULO 2: REFERENCIAS VS PUNTEROS CRUDOS
+// MODULE 2: REFERENCES VS RAW POINTERS
 // ═════════════════════════════════════════════════════════════════════════════
 /*
-    DIFERENCIA CRÍTICA:
+    CRITICAL DIFFERENCE:
 
-    &T (referencia)
-    • compara el CONTENIDO (dereferencia automática)
-    • &5 == &5 → TRUE (compara valores)
+    &T (reference)
+    • compares the CONTENT (automatic dereference)
+    • &5 == &5 → TRUE (compares values)
 
-    *const T (puntero crudo)
-    • Compara la DIRECCIÓN de memoria (no el contenido)
-    • 0x7fff1234 == 0x7fff5678 → FALSE (direcciones distintas)
+    *const T (raw pointer)
+    • Compares the MEMORY ADDRESS (not the content)
+    • 0x7fff1234 == 0x7fff5678 → FALSE (different addresses)
 */
 #[cfg(test)]
-mod referencias_vs_punteros {
+mod references_vs_pointers {
 
-    // referencias comparan valores
+    // references compare values
     #[test]
-    pub fn test_referencias_iguales() {
+    pub fn test_references_equal() {
         let x = 5;
         let y = 5;
 
-        // ✅ Referencia compara valores
-        assert_eq!(&x, &y); // TRUE (ambos valen 5)
+        // ✅ Reference compares values
+        assert_eq!(&x, &y); // TRUE (both are worth 5)
     }
 
-    // punteros comparan direcciones
+    // pointers compare addresses
     #[test]
-    pub fn test_punteros_direcciones() {
-        println!("\n▶ PUNTEROS CRUDOS - Comparan DIRECCIONES");
+    pub fn test_pointers_addresses() {
+        println!("\n▶ RAW POINTERS - Compare ADDRESSES");
         let x = 5;
         let y = 5;
 
-        // ❌ Puntero compara dirección en stack (distintas variables)
+        // ❌ Pointer compares stack address (different variables)
         let ptr_x: *const i32 = &x as *const i32;
         let ptr_y: *const i32 = &y as *const i32;
-        assert_ne!(ptr_x, ptr_y); // FALSE (direcciones distintas)
+        assert_ne!(ptr_x, ptr_y); // FALSE (different addresses)
 
-        // ✅ El MISMO puntero a sí mismo es igual
-        assert_eq!(ptr_x, ptr_x); // TRUE (mismo número de dirección)
+        // ✅ The SAME pointer to itself is equal
+        assert_eq!(ptr_x, ptr_x); // TRUE (same address number)
     }
 
     #[test]
-    pub fn test_punteros_heap() {
+    pub fn test_pointers_heap() {
         let vec1: Vec<i32> = vec![1, 2, 3];
-        let ptr_before = vec1.as_ptr(); // Puntero a datos en heap
+        let ptr_before = vec1.as_ptr(); // Pointer to heap data
 
-        let vec2 = vec1; // Move (ownership cambió pero datos en heap no se copian)
-        let ptr_after = vec2.as_ptr(); // Mismo puntero a heap
+        let vec2 = vec1; // Move (ownership changed but heap data not copied)
+        let ptr_after = vec2.as_ptr(); // Same pointer to heap
 
-        // ✅ Ambos apuntan al MISMO lugar en heap
+        // ✅ Both point to the SAME place in heap
         assert_eq!(ptr_before, ptr_after);
     }
 
-    //contenido de puntero contra referencia
+    // pointer content against reference
     #[test]
-    pub fn test_referencias_vs_punteros() {
+    pub fn test_references_vs_pointers() {
         let x = 10;
-        let ref_x: &i32 = &x; // Referencia
-        let ptr_x: *const i32 = &x; // Puntero crudo
+        let ref_x: &i32 = &x; // Reference
+        let ptr_x: *const i32 = &x; // Raw pointer
 
-        // ✅ Referencia compara valor
-        assert_eq!(ref_x, &x); // TRUE 
-        // ✅ Puntero crudo compara dirección
-        assert_eq!(ptr_x, ref_x as *const i32); // TRUE (misma dirección)
-        // contenido del puntero es igual al valor de x
-        assert_eq!(unsafe { *ptr_x }, *ref_x); // Dereferencia puntero crudo (unsafe)
+        // ✅ Reference compares value
+        assert_eq!(ref_x, &x); // TRUE
+                               // ✅ Raw pointer compares address
+        assert_eq!(ptr_x, ref_x as *const i32); // TRUE (same address)
+                                                // pointer content equals the value of x
+        assert_eq!(unsafe { *ptr_x }, *ref_x); // Dereference raw pointer (unsafe)
     }
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// MÓDULO 3: ARRAYS, SLICES Y VECTORES
+// MODULE 3: ARRAYS, SLICES AND VECTORS
 // ═════════════════════════════════════════════════════════════════════════════
 #[cfg(test)]
-mod colecciones {
+mod collections {
     /*
-    COMPARACIÓN EN COLECCIONES: (Arrays, Slices, Vectores)
+    COMPARISON IN COLLECTIONS: (Arrays, Slices, Vectors)
 
-        • PartialEq/Eq: compara elemento por elemento por valor, no por direccion de memoria.
+        • PartialEq/Eq: compares element by element by value, not by memory address.
             [1,2,3] == [1,2,3] → TRUE
             [1,2,3] == [1,2,4] → FALSE
     */
 
-    // Arrays comparan contenido, no dirección
+    // Arrays compare content, not address
     #[test]
     pub fn test_arrays() {
         let arr1 = [1, 2, 3];
         let arr2 = [1, 2, 3];
         let arr3 = [1, 2, 4];
 
-        assert_eq!(arr1, arr2); // TRUE (mismo contenido)
-        assert_ne!(arr1, arr3); // FALSE (distinto elemento)
-        assert_eq!(arr1 < arr3, true); // Orden lexicográfico
+        assert_eq!(arr1, arr2); // TRUE (same content)
+        assert_ne!(arr1, arr3); // FALSE (different element)
+        assert_eq!(arr1 < arr3, true); // Lexicographic order
 
-        println!("✓ arrays: comparación elemento por elemento");
+        println!("✓ arrays: element by element comparison");
     }
 
-    // Slices comparan contenido, no dirección
+    // Slices compare content, not address
     #[test]
     pub fn test_slices() {
         let arr = [1, 2, 3, 4, 5];
@@ -668,33 +665,33 @@ mod colecciones {
         let slice2 = &arr[0..3];
         let slice3 = &arr[1..4]; // [2, 3, 4]
 
-        assert_eq!(slice1, slice2); // TRUE (mismo contenido)
-        assert_ne!(slice1, slice3); // FALSE (contenido distinto)
+        assert_eq!(slice1, slice2); // TRUE (same content)
+        assert_ne!(slice1, slice3); // FALSE (different content)
         assert_eq!(slice1.len(), 3);
     }
 
-    // Vectores comparan contenido, no dirección
+    // Vectors compare content, not address
     #[test]
-    pub fn test_vectores() {
+    pub fn test_vectors() {
         let vec1 = vec![1, 2, 3];
         let vec2 = vec![1, 2, 3];
         let vec3 = vec![1, 2, 3, 4];
 
-        // ✅ Compara contenido, NO dirección en heap
-        assert_eq!(vec1, vec2); // TRUE (mismo contenido)
-        assert_ne!(vec1, vec3); // FALSE (distinto tamaño/contenido)
+        // ✅ Compares content, NOT heap address
+        assert_eq!(vec1, vec2); // TRUE (same content)
+        assert_ne!(vec1, vec3); // FALSE (different size/content)
 
-        // Direcciones heap distintas
-        assert_ne!(vec1.as_ptr(), vec2.as_ptr()); // Distintos lugares en heap
+        // Heap addresses different
+        assert_ne!(vec1.as_ptr(), vec2.as_ptr()); // Different places in heap
     }
 
-    // Orden lexicográfico en colecciones
+    // Lexicographic order in collections
     #[test]
-    pub fn test_orden_colecciones() {
+    pub fn test_collections_order() {
         let a = [1, 2, 3];
         let b = [1, 2, 4];
 
-        assert_eq!(a < b, true); // [1,2,3] < [1,2,4] (en posición 2: 3<4)
+        assert_eq!(a < b, true); // [1,2,3] < [1,2,4] (at position 2: 3<4)
     }
 }
 
@@ -702,11 +699,11 @@ mod colecciones {
 // ENUMS
 // ═════════════════════════════════════════════════════════════════════════════
 /*
- Los Enums se ordenan según el orden de definición de sus variantes y no por su contenido asociado.
+ Enums are ordered according to the order of definition of their variants and not by their associated content.
 
 */
 #[cfg(test)]
-mod tipos_compuestos {
+mod compound_types {
 
     #[allow(unused_variables)]
     #[allow(dead_code)]
@@ -724,16 +721,16 @@ mod tipos_compuestos {
         let high = Priority::High;
 
         assert_ne!(low, high);
-        assert_eq!(low < high, true); // Orden: Low < Medium < High
+        assert_eq!(low < high, true); // Order: Low < Medium < High
 
-        // Orden de definición en enum
+        // Order of definition in enum
         assert_eq!(Priority::Low < Priority::Medium, true);
         assert_eq!(Priority::Medium < Priority::High, true);
-        println!("✓ Enums: orden por posición de definición (arriba < abajo)");
+        println!("✓ Enums: order by position of definition (top < bottom)");
     }
 
-    // Ejemplo con datos asociados
-    // sigue comparando por orden y no por contenido
+    // Example with associated data
+    // still compares by order and not by content
 
     #[allow(unused_variables)]
     #[allow(dead_code)]
@@ -757,18 +754,18 @@ mod tipos_compuestos {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// MÓDULO 6: TUPLAS
+// MODULE 6: TUPLES
 // ═════════════════════════════════════════════════════════════════════════════
 #[cfg(test)]
-mod tuplas {
+mod tuples {
     /*
-    COMPARACIÓN EN TUPLAS:
+    COMPARISON IN TUPLES:
 
-    Las tuplas comparan elemento por elemento, en orden:
-    (1, 'a') < (1, 'b') → TRUE (primer elemento igual, segundo a<b)
-    (1, 'b') < (2, 'a') → TRUE (primer elemento 1<2)
+    Tuples compare element by element, in order:
+    (1, 'a') < (1, 'b') → TRUE (first element equal, second a<b)
+    (1, 'b') < (2, 'a') → TRUE (first element 1<2)
 
-    Requieren que TODOS los tipos implementen el trait de comparación.
+    Require that ALL types implement the comparison trait.
     */
 
     #[test]
@@ -780,23 +777,23 @@ mod tuplas {
 
         assert_eq!(t1, t2); // TRUE
         assert_ne!(t1, t3); // FALSE
-        println!("✓ tuplas: comparan elemento por elemento");
+        println!("✓ tuples: element by element comparison");
     }
 
     #[test]
     pub fn test_tuples_ord() {
-        println!("\n▶ TUPLE ORDERING (lexicográfico)");
+        println!("\n▶ TUPLE ORDERING (lexicographic)");
         let t1 = (1, 2, 3);
         let t2 = (1, 2, 4);
         let t3 = (1, 3, 0);
         let t4 = (2, 0, 0);
 
-        assert_eq!(t1 < t2, true); // Posición 2: 3<4
-        assert_eq!(t1 < t3, true); // Posición 1: 2<3
-        assert_eq!(t1 < t4, true); // Posición 0: 1<2
+        assert_eq!(t1 < t2, true); // Position 2: 3<4
+        assert_eq!(t1 < t3, true); // Position 1: 2<3
+        assert_eq!(t1 < t4, true); // Position 0: 1<2
 
-        // Orden por campo: primero → segundo → tercero
-        println!("✓ tuplas: orden lexicográfico (campo a campo)");
+        // Order by field: first → second → third
+        println!("✓ tuples: lexicographic order (field by field)");
     }
 
     #[test]
@@ -807,6 +804,6 @@ mod tuplas {
 
         assert_eq!(nested1, nested2);
         assert_eq!(((1, 2), (3, 3)) < nested1, true);
-        println!("✓ tuplas anidadas: orden recursivo");
+        println!("✓ nested tuples: recursive order");
     }
 }

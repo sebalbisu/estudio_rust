@@ -1,20 +1,22 @@
 #[allow(dead_code)]
 #[allow(unused_variables)]
 #[test]
-fn indice() {
-    intro::basico();
+fn index() {
+    intro::basic();
 
-    cuando_no_necesitas::print_both();
-    cuando_no_necesitas::join_strings();
-    cuando_no_necesitas::append_suffix();
+    implicit_lifetimes::no_return_value();
+    implicit_lifetimes::return_owned();
+    implicit_lifetimes::only_modifies();
 
-    por_que_explicitos::por_que_explicitos();
+    why_explicit::why_explicit();
+    
+    in_structs::in_structs();
 
-    en_structs::en_structs();
+    bounds::bounds();
 
-    elision_rules::regla_1_multi_params();
-    elision_rules::regla_2_single_input();
-    elision_rules::regla_3_self();
+    elision_rules::rule_1_multi_params();
+    elision_rules::rule_2_single_input();
+    elision_rules::rule_3_self();
     elision_rules::elision_fails();
 
     static_lifetime::static_intro();
@@ -37,118 +39,132 @@ fn indice() {
 
 /*
 ========================================================================
-INTRO: ¿QUÉ SON LOS LIFETIMES?
+INTRO: WHAT ARE LIFETIMES?
 ========================================================================
 
-    CONCEPTO CLAVE:
-        Lifetimes SIEMPRE existen para cada referencia (&T).
-        El compilador los infiere automáticamente en la mayoría de
-        casos. Solo los escribes cuando hay ambigüedad.
+    KEY CONCEPT:
+    --------------------------------------------
+        Lifetimes ALWAYS exist for every reference (&T).
+        The compiler automatically infers them in most cases.
+        You only write them when there's ambiguity.
 
-    TODA REFERENCIA tiene un LIFETIME asociado:
-        let value: i32 = 123;        // value vive en este scope
-        let ref_value: &i32 = &value; // ref tiene lifetime implícito
-        Internamente el compilador ve algo como:
-        let ref_value: &'a i32 = &value;   // 'a = lifetime de value
+    EVERY REFERENCE has an associated LIFETIME:
+    --------------------------------------------
+        let value: i32 = 123;        // value lives in this scope
+        let ref_value: &i32 = &value; // ref has implicit lifetime
+        Internally the compiler sees something like:
+        let ref_value: &'a i32 = &value;   // 'a = lifetime of value
 
-    'static
-        El lifetime de T es 'static, no depende de datos locales, tiene la capacidad de vivir todo el programa
-            * Si son referencias 'static, viven mientras viva la referencia, independientemente de cualquier variable.
-            * Los tipos Owner (tipos que no son referencias), se puede decir que tienen el lifetime 'static implícito
+    'static:
+    --------------------------------------------
+        The lifetime of T is 'static, doesn't depend on other local data, 
+        has the ability to live throughout the entire program
+            
+            * If they are 'static references, they live as long as 
+            the reference exists, independent of any variable.
+            Ex: &'static str, const, static, Arc<T>
 
-    'a
-        lifetime condicionado por el lifetime 'static del owner.
+            * Owner types (non-reference types) can be said to have 
+            implicit 'static lifetime
 
-    '_
-        lifetime anónimo (placeholder) que el compilador infiere automáticamente.
+    'a:
+    --------------------------------------------
+        Lifetime conditioned by the 'static lifetime of the owner.
 
-    REGLA FUNDAMENTAL:
-        El lifetime de la referencia DEBE ser ≤ que el del dueño
-        (la referencia no puede vivir más que el objeto referenciado)
-        value:     ├──────────────────────┤  (vive líneas 1-10)
-        ref_value: │     ├────────┤       │  (vive líneas 3-7)
-                         └────────┘  ✓ OK: ref dentro del dueño
+    '_:
+    --------------------------------------------
+        Anonymous lifetime (placeholder) that the compiler automatically infers.
 
-    ANALOGÍA CON TIPOS:
-        let x = 5;           // tipo i32 inferido
-        let x: i32 = 5;      // tipo explícito (redundante)
-        fn foo(s: &str)              // lifetime inferido
-        fn foo<'a>(s: &'a str)       // lifetime explícito (redundante)
+    FUNDAMENTAL RULE:
+    --------------------------------------------
+        The lifetime of the reference MUST be ≤ than the owner's lifetime
+        (the reference cannot live longer than the referenced object)
+        value:     ├──────────────────────┤  (lives lines 1-10)
+        ref_value: │     ├────────┤       │  (lives lines 3-7)
+                         └────────┘  ✓ OK: ref within owner
 
-    FIRMAS CON LIFETIMES:
-        En las firmas de funciones, structs, impls, metodos, van los lifetimes si hay
-        referencias involucradas y tipos los genericos.
-        Van en la firma para que el compilador sepa cómo relacionar las duraciones
-        de las referencias usadas.
-        Si se se omiten en la firma porque son evidentes, se usa elision = syntax suggar,
-        internamente se agregan igual a la firma.
+    IMPLICIT LIFETIMES:
+    --------------------------------------------
+        fn foo(s: &str)              // lifetime inferred
+        fn foo<'a>(s: &'a str)       // explicit lifetime (redundant)
 
-        fn foo<'a>(s: &'a str)
-        struct Parser<'a> { ...; input: &'a str }
-        impl<'a> Parser<'a> { ... }
+    SIGNATURES WITH LIFETIMES:
+    --------------------------------------------
+            fn foo<'a>(s: &'a str)
+            struct Parser<'a> { ...; input: &'a str }
+            impl<'a> Parser<'a> { ... }
+            fn foo<'a, T>(s: &'a str, t: T) -> &'a str
+
+        In signatures lifetimes are added when there are references 
+        involved and generic types. 
+        So the compiler knows how to relate the durations of the references 
+        and generic types used.
+        If they're omitted from the signature because they're obvious, 
+        elision is used = syntax sugar, internally they're added to the signature anyway.
+
 */
 
 #[cfg(test)]
 mod intro {
     #[test]
-    pub fn basico() {
+    pub fn basic() {
         {
-            // Un lifetime es "cuánto tiempo vive una referencia"
-            let owner = String::from("hola");
-            let referencia = &owner;
-            assert!(referencia.is_empty() == false);
+            // A lifetime is "how long a reference lives"
+            let owner = String::from("hello");
+            let reference = &owner;
+            assert!(reference.is_empty() == false);
         }
-        // línea 5: owner muere, referencia ya no puede usarse
+        // line 5: owner dies, reference can no longer be used
     }
 }
 
 /*
 ========================================================================
-CUÁNDO NO NECESITAS LIFETIMES EXPLÍCITOS
+IMPLICIT LIFETIMES
 ========================================================================
 
-    REGLA CLAVE:
+    KEY RULE:
     --------------------------------------------
-        Si la función NO retorna referencia, NO necesitas lifetimes explícitos.
+        If the function DOESN'T return a reference, you DON'T need explicit lifetimes.
 
-        ¿Por qué? Los lifetimes relacionan la duración del OUTPUT con la duración
-        de los INPUTS. Sin output de referencia → nada que relacionar.
+        Lifetimes relate the duration of the OUTPUT to the duration
+        of the INPUTS. Without reference output → nothing to relate.
 
-    COMPARA: CON vs SIN LIFETIMES
+    COMPARISON: WITH vs WITHOUT LIFETIMES
     --------------------------------------------
 
-        SIN lifetimes (retorna owned/void/primitivo):
+        WITHOUT lifetimes (returns owned/void/primitive):
           fn process(a: &str, b: &str)                   // void
           fn process(a: &str, b: &str) -> String         // owned
           fn process(a: &str, b: &str) -> usize          // Copy
 
-        CON lifetimes (retorna referencia):
+        WITH lifetimes (returns reference):
           fn process<'a>(a: &'a str, b: &str) -> &'a str // ref!
           fn process<'a>(a: &'a str) -> &'a [u8]         // ref!
 
-        Elision: con 1 input, no escribes 'a)
+        Elision: with 1 input, you don't write 'a)
           fn process(a: &str) -> &str              // ref! elision
 
-    CASOS ESPECIALES:
+    SPECIAL CASES:
     --------------------------------------------
 
-        STRUCTS que contienen &T siempre necesitan 'a:
+        STRUCTS that contain &T always need 'a:
 
           struct Parser<'a> {
-              input: &'a str,  // El struct "borrow" el string
+              input: &'a str,  // The struct "borrows" the string
           }
 
           impl<'a> Parser<'a> {
               fn new(input: &'a str) -> Self {
-                  Parser { input }  // retorna struct con ref
+                  Parser { input }  // returns struct with ref
               }
 
               fn len(&self) -> usize {
-                  self.input.len()  // ✓ NO lifetime - retorna usize
+                  self.input.len()  // ✓ NO lifetime - returns usize
               }
 
-              // Elision en metodos: referencias sin lifetimes en returns
-              // usan el lifetime del &'a self
+              // Elision in methods: references without lifetimes in returns
+              // use the lifetime of &self (note: 'a is greater than &self)
               fn input(&self) -> &str {
                   self.input
               }
@@ -156,34 +172,35 @@ CUÁNDO NO NECESITAS LIFETIMES EXPLÍCITOS
 */
 
 #[cfg(test)]
-mod cuando_no_necesitas {
+mod implicit_lifetimes {
 
-    // Sin retorno
+    // No return value
     #[test]
-    pub fn print_both() {
-        fn print_both(a: &str, b: &str) {
-            // ✓ NO necesita lifetimes - no retorna nada
-            println!("{} {}", a, b);
+    pub fn no_return_value() {
+
+
+        fn do_nothing(_a: &str, _b    : &str) {
+            // ✓ NO need for lifetimes - returns nothing
         }
-        print_both("hola", "mundo");
+        do_nothing("hello", "world");
     }
 
-    // Retorna valor owned
+    // Returns owned value
     #[test]
-    pub fn join_strings() {
+    pub fn return_owned() {
         fn join_strings(a: &str, b: &str) -> String {
-            // ✓ NO necesita lifetimes - retorna String (owned)
+            // ✓ NO need for lifetimes - returns String (owned)
             format!("{} {}", a, b)
         }
         let joined = join_strings("hello", "world");
         assert_eq!(joined, "hello world");
     }
 
-    // Modifica in-place
+    // only modifies the reference
     #[test]
-    pub fn append_suffix() {
+    pub fn only_modifies() {
         fn append_suffix(s: &mut String, suffix: &str) {
-            // ✓ NO necesita lifetimes - no retorna referencia
+            // ✓ NO need for lifetimes - doesn't return reference
             s.push_str(suffix);
         }
         let mut text = String::from("Hello");
@@ -194,197 +211,231 @@ mod cuando_no_necesitas {
 
 /*
 ========================================================================
-POR_QUE_EXPLICITOS
+EXPLICIT
 ========================================================================
 
-    Cuando hay DOS referencias de entrada y un output de ellas → AMBIGÜEDAD
+    When there are TWO reference inputs and an output from them → AMBIGUITY
+
+        fn return_ref<'a, 'b>(x: &'a str, y: &'b str) -> &'a str { ... }
 */
 
 #[cfg(test)]
-mod por_que_explicitos {
+mod why_explicit {
     #[test]
-    pub fn por_que_explicitos() {
-        // Caso 1: UNA entrada → compilador infiere
+    pub fn why_explicit() {
+        // Case 1: ONE input → compiler infers
         fn first_word(s: &str) -> &str {
             s.split_whitespace().next().unwrap_or("")
         }
-        // El compilador sabe: output vive tanto como input
+        // The compiler knows: output lives as long as input
 
-        // Caso 2: DOS entradas → AMBIGÜEDAD
+        // Case 2: TWO inputs → AMBIGUITY
         // fn longest(x: &str, y: &str) -> &str { ... }
-        // ERROR: ¿el resultado vive como x? ¿o como y?
+        // ERROR: Does the result live like x? Or like y?
 
-        // Solución: especificar con 'a
+        // Solution: specify with 'a
         fn longest<'a>(x: &'a str, y: &'a str) -> &'a str {
             if x.len() > y.len() { x } else { y }
         }
 
-        let s1 = String::from("corta");
-        let s2 = String::from("mas larga");
-        println!("  Primera palabra: {}", first_word(&s1));
-        println!("  La más larga: {}", longest(&s1, &s2));
+        let s1 = String::from("short");
+        let s2 = String::from("much longer");
 
-        assert_eq!(first_word(&s1), "corta");
-        assert_eq!(longest(&s1, &s2), "mas larga");
+        assert_eq!(first_word(&s1), "short");
+        assert_eq!(longest(&s1, &s2), "much longer");
     }
 }
 
 /*
 ========================================================================
-LIFETIMES EN STRUCTS
+LIFETIMES IN STRUCTS
 ========================================================================
 
-    STRUCT CON REFERENCIA:
+    STRUCT WITH REFERENCE:
     --------------------------------------------
-        Si un struct contiene referencias, DEBE tener lifetime.
+        The struct can live as long as the reference it contains.
+        If a struct contains references, it MUST have a lifetime.
 
-        let texto = String::from("Hola mundo");
+        let text = String::from("Hello world");
             │
             ▼
         ┌─────────┐     ┌────────────────┐
-        │ texto   │────▶│ "Hola mundo"   │  (heap)
-        │ └───────┘     └────────────────┘
+        │ text    │───▶│ "Hello world"  │  (heap)
+        └─────────┘     └────────────────┘
                                ▲
                                │
         ┌─────────────────┐    │
         │ Excerpt<'a>     │    │
-        │   part: &'a str─┼────┘  (apunta a texto)
+        │   part: &'a str─┼────┘  (points to text)
         └─────────────────┘
 
-        → Excerpt NO puede vivir más que 'texto'
+        → Excerpt<'a> CANNOT live longer than text
 */
 
 #[cfg(test)]
-mod en_structs {
+mod in_structs {
     #[test]
-    pub fn en_structs() {
+    pub fn in_structs() {
         #[derive(Debug)]
         struct Excerpt<'a> {
             part: &'a str,
         }
-
-        //  impl<'a> = "Voy a usar un lifetime llamado 'a"
-        //      ↑      (como si fuera una variable)
-        //
-        //  Excerpt<'a> = "Para todos los Excerpt que tengan lifetime 'a"
-        //            ↑   (le paso el valor 'a)
+        
         impl<'a> Excerpt<'a> {
             fn get_part(&self) -> &str {
                 self.part
             }
         }
 
-        let texto = String::from("Hola mundo cruel");
-        let excerpt = Excerpt { part: &texto[0..4] };
-        println!("  Excerpt: {:?}", excerpt.get_part());
-        assert_eq!(excerpt.get_part(), "Hola");
+        let text = String::from("Hello cruel world");
+        let excerpt = Excerpt { part: &text[0..4] };
+        assert_eq!(excerpt.get_part(), "Hell");
     }
 }
 
 /*
+========================================
+BOUNDS - LIFETIME RESTRICTIONS
+========================================
+
+    Bounds are used to restrict the lifetime of a type or another lifetime.
+
+    T: 'a
+    --------------------------
+    The type T lives at least as long as the lifetime 'a
+
+    'a: 'b
+    --------------------------
+    The lifetime 'a lives at least as long as the lifetime 'b
+
+    'a: 'static
+    --------------------------
+    The lifetime 'a is static
+
+    T: 'a + 'b
+    --------------------------
+    The type T lives at least as long as the lifetime 'a and 'b
+
+*/
+mod bounds {
+    #[test]
+    pub fn bounds() {
+        struct Container<'a, T: 'a>
+        {
+            reference: &'a T,
+        }
+
+        impl<'a, T: 'a> Container<'a, T> {
+            fn get_reference(&self) -> &'a T {
+                self.reference
+            }
+        }
+
+        let container = Container { reference: &1 };
+        let reference = container.get_reference();
+        assert_eq!(*reference, 1);
+    }
+}
+
+
+/*
 ========================================================================
-ELISION_RULES: (INFERENCIA AUTOMÁTICA)
+ELISION_RULES: (AUTOMATIC INFERENCE)
 ========================================================================
 
-    "ELISION" = El compilador OMITE/INFIERE lifetimes por ti.
+    "ELISION" = The compiler OMITS/INFERS lifetimes for you.
 
-    Cuando escribes:    fn foo(s: &str) -> &str
-    El compilador ve:   fn foo<'a>(s: &'a str) -> &'a str
-
-    ¡No necesitas escribir 'a explícitamente!
+    When you write:    fn foo(s: &str) -> &str
+    The compiler sees: fn foo<'a>(s: &'a str) -> &'a str
 */
 
 #[cfg(test)]
 mod elision_rules {
 
     /*
-    REGLA 1: Cada parámetro recibe su propio lifetime
+    Each parameter receives its own lifetime, no return ref
     --------------------------------------------
-        Escribes:
+        You write:
           fn foo(x: &str, y: &str, z: &i32)
 
-        Compilador infiere:
+        Compiler infers:
           fn foo<'a, 'b, 'c>(x: &'a str, y: &'b str, z: &'c i32)
                  ↑   ↑   ↑
-                 └───┴───┴── cada uno recibe lifetime único
+                 └───┴───┴── each one receives unique lifetime
     */
     #[test]
-    pub fn regla_1_multi_params() {
+    pub fn rule_1_multi_params() {
         fn _foo(x: &str, y: &str) {
             println!("  x: {}, y: {}", x, y);
         }
-        // El compilador ve: fn foo<'a, 'b>(x: &'a str, y: &'b str)
+        // The compiler sees: fn foo<'a, 'b>(x: &'a str, y: &'b str)
     }
 
     /*
-    REGLA 2: 1 input → output hereda ese lifetime
+    return ref input
     --------------------------------------------
-        Escribes:
+        You write:
           fn first(s: &str) -> &str
 
-        Compilador infiere:
+        Compiler infers:
           fn first<'a>(s: &'a str) -> &'a str
                           ↑              ↑
-                          └──────────────┘  mismo lifetime
-
-        ¿Por qué? Solo hay 1 opción de dónde viene el output.
+                          └──────────────┘  same lifetime
     */
     #[test]
-    pub fn regla_2_single_input() {
+    pub fn rule_2_single_input() {
         fn first_word(s: &str) -> &str {
             s.split_whitespace().next().unwrap_or("")
         }
-        let s = String::from("hola mundo");
+        let s = String::from("hello world");
         let word = first_word(&s);
         println!("  First word: {}", word);
-        assert_eq!(word, "hola");
+        assert_eq!(word, "hello");
     }
 
     /*
-    REGLA 3: &self → output hereda lifetime de self
+    methods with &self → lifetime of self
     --------------------------------------------
-        Escribes:
+        You write:
           fn method(&self, other: &str) -> &str
 
-        Compilador infiere:
+        Compiler infers:
           fn method<'a, 'b>(&'a self, other: &'b str) -> &'a str
                              ↑                            ↑
                              └────────────────────────────┘
-                             cuando no se especifica usa el del &self
+                             when not specified uses the one from &self
 
-        Para que devuelva other hay que especificarlo explícitamente &'b str.
-        ¿Por qué? Los métodos usualmente retornan datos del struct.
+        Because methods usually return data from the struct.
     */
     #[test]
-    pub fn regla_3_self() {
+    pub fn rule_3_self() {
         struct Reader<'a> {
             content: &'a str,
         }
 
         impl<'a> Reader<'a> {
-            // Elision: el retorno hereda el lifetime de &self
+            // Elision: the return inherits the lifetime of &self
             fn get_content(&self) -> &str {
                 self.content
             }
         }
 
-        let text = String::from("contenido");
+        let text = String::from("content");
         let reader = Reader { content: &text };
-        println!("  Content: {}", reader.get_content());
-        assert_eq!(reader.get_content(), "contenido");
+        assert_eq!(reader.get_content(), "content");
     }
 
     /*
-    CUANDO LAS REGLAS FALLAN → Debes escribir lifetimes
+    WHEN RULES FAIL → You must write lifetimes
     --------------------------------------------
         fn longest(x: &str, y: &str) -> &str
 
-        Regla 1: asigna 'a a x, 'b a y
-        Regla 2: ✗ hay 2 lifetimes, no 1
-        Regla 3: ✗ no hay &self
+        Rule 1: assigns 'a to x, 'b to y
+        Rule 2: ✗ there are 2 lifetimes, not 1
+        Rule 3: ✗ no &self
 
         → ERROR: "missing lifetime specifier"
-        → Debes escribir: fn longest<'a>(x: &'a str, y: &'a str)
+        → You must write: fn longest<'a>(x: &'a str, y: &'a str)
     */
     #[test]
     pub fn elision_fails() {}
@@ -395,28 +446,31 @@ mod elision_rules {
 'STATIC LIFETIME
 ========================================================================
 
-    'static = no depende de datos locales, tiene la capacidad de vivir todo el programa, solo depende del tiempo de vida de si mismo.
+    'static = doesn't depend on another local data, 
+        has the ability to live throughout the entire program, 
+        depends only on its own lifetime.
 
-    los owners tambien tienen lifetime 'static implícito.
-    let x = 100; // i32 tiene lifetime 'static implícito
+    owners also have implicit 'static lifetime.
 
-    referencias 'static, viven mientras viva la referencia, independientemente de cualquier variable.
+        let x = 100; // i32 has implicit 'static lifetime
+
+    'static references live as long as the reference exists, independent of any variable.
 */
 
 #[cfg(test)]
 mod static_lifetime {
 
     /*
-    OWNERS Y 'static IMPLÍCITO
+    OWNERS AND IMPLICIT 'static
     --------------------------------------------
-        Los tipos que NO son referencias (&T) tienen lifetime 'static implícito.
-     */
+        Types that are NOT references (&T) have implicit 'static lifetime.
+    */
     #[test]
     pub fn owners() {
         fn test_static<T: 'static>(_owner: T) {
             //...
         }
-        let owner = 100; // i32 tiene lifetime 'static implícito
+        let owner = 100; // i32 has implicit 'static lifetime
         test_static(owner);
     }
 
@@ -426,30 +480,32 @@ mod static_lifetime {
     */
     #[test]
     pub fn static_intro() {
-        // 'static es un lifetime especial que solo depende del tiempo de vida de si mismo
+        // 'static is a special lifetime that depends only on its own lifetime
         {
-            let s: &'static str = "Soy estático";
+            let s: &'static str = "I am static";
             println!("{s}");
         }
-        // println!("{s}"); // ERROR: s no vive más allá del scope
+        // dropped: s // out of block scope
+        // println!("{s}"); // ERROR: s doesn't live beyond this scope, 
+        // not because another variable is using it, but because it's out of scope.
     }
 
     /*
     String Literals
     --------------------------------------------
-        let s: &'static str = "hola";
+        let s: &'static str = "hello";
 
-        Lifetime todo el programa, su owner es el binario ejecutable.
-        Se puede devolver de funciones sin problemas.
+        Lifetime throughout the entire program, its owner is the executable binary.
+        Can be returned from functions without problems.
     */
     #[test]
     pub fn static_literals() {
         fn get_static_str() -> &'static str {
-            "cadena literal"
+            "string literal"
         }
 
-        let _s1: &str = get_static_str(); // El tipo real es &'static str
-        let _s2: &'static str = "literal explícito";
+        let _s1: &str = get_static_str(); // The actual type is &'static str
+        let _s2: &'static str = "explicit literal";
     }
 
     /*
@@ -457,22 +513,25 @@ mod static_lifetime {
     --------------------------------------------
         const PI: f64 = 3.14159;
 
-        Valor copiado donde se use (inlining) se reemplaza la variable por su valor cuando compila.
-        Tipos que acepta
+        Ex: transpiles: return PI * radius * radius -> 3.14159 * radius * radius (inlining)
+
+        Value copied where it's used (inlining) the variable is replaced by its value 
+        during compilation.
+        Types it accepts:
             * Copy
-            * Referencias 'static
-        Es accesible según su visibilidad y ubicación.
-            * Si esta definido a nivel de modulo, es global.
-            * Si esta dentro de una función, es local a esa función.
-        Es inmutable por defecto.
-        Es thread-safe
+            * 'static references
+        It's accessible according to its visibility and location.
+            * If defined at module level, it's global.
+            * If inside a function, it's local to that function.
+        It's immutable by default.
+        It's thread-safe
      */
     #[test]
     pub fn const_inline() {
         const PI: f64 = 3.14159;
         fn area_circle(radius: f64) -> f64 {
             PI * radius * radius
-            // 3.14159 * radius * radius  ← PI se reemplaza directo por su valor
+            // 3.14159 * radius * radius  ← PI is replaced directly by its value
         }
         let area = area_circle(2.0);
         assert_eq!(area, PI * 4.0);
@@ -481,47 +540,47 @@ mod static_lifetime {
     /*
     STATIC var
     --------------------------------------------
-        static ID: i32 = 100;           // inmutable, 'static
-        static NAME: &str = "Rust";     // inmutable, 'static
-        static mut COUNT: i32 = 0;      // mutable, requiere unsafe
+        static ID: i32 = 100;           // immutable, 'static
+        static NAME: &str = "Rust";     // immutable, 'static
+        static mut COUNT: i32 = 0;      // mutable, requires unsafe
 
-        Dirección fija en memoria durante todo el programa.
-        Tipos que acepta:
+        Fixed address in memory throughout the entire program.
+        Types it accepts:
             * Copy
-            * Referencias 'static
-        Es accesible según su visibilidad y ubicación.
-            * Si esta definido a nivel de modulo, es global.
-            * Si esta dentro de una función, es local a esa función, pero persiste entre llamadas. Tambien se puede devolver como referencia 'static desde la funcion.
-        Si es static mut:
-            * unsafe: Requiere unsafe para leer o escribir, otros threads tienen acceso a la variable.
-            * +Sync si se usa en threads
+            * 'static references
+        It's accessible according to its visibility and location.
+            * If defined at module level, it's global.
+            * If inside a function, it's local to that function, but persists between calls. Can also be returned as a 'static reference from the function.
+        If it's static mut:
+            * unsafe: Requires unsafe to read or write, other threads have access to the variable.
+            * +Sync if used with Mutex/RwLock/... for threads
         */
 
-    // Acceso a variable estática dentro de otro stack
+    // Access to static variable within another stack
     #[test]
     pub fn static_basic() {
         static COUNT: i32 = 42;
         fn print_count() {
-            // Acceso a variable estática
+            // Access to static variable
             println!("  Static COUNT inside fn: {}", COUNT);
         }
         print_count();
     }
 
-    // return de referencia 'static desde función con static local
+    // return of 'static reference from function with static local
     #[test]
     pub fn static_return_test() {
         fn return_static() -> &'static i32 {
             static GREETING: i32 = 1;
-            // retorna referencia 'static
+            // returns 'static reference
             &GREETING
         }
-        // valido, 'static depende de si mismo, en este caso direccion fija en memoria.
+        // valid, 'static depends on itself, in this case fixed address in memory.
         let _greeting_ref: &'static i32 = return_static();
     }
 
-    // Acceso mutable con UNSAFE
-    // otros threads pueden acceder a la variable, entonces no garantiza seguridad.
+    // Mutable access with UNSAFE
+    // other threads can access the variable, so it doesn't guarantee safety.
     #[test]
     pub fn static_mutable() {
         static mut COUNTER: i32 = 0;
@@ -536,25 +595,25 @@ mod static_lifetime {
     /*
     Box::leak
     --------------------------------------------
-        Convertir heap a 'static
+        Convert heap to 'static
 
         let s = String::from("runtime");
         let leaked: &'static str = Box::leak(s.into_boxed_str());
 
-        Toma ownership del Box, lo pone en una memoria que NUNCA se libera y retorna
-        una referencia 'static a ese dato. Entonces tiene lifetime 'static.
-        Se libera la memoria al terminar el programa.
+        Takes ownership of the Box, puts it in memory that NEVER gets freed and returns
+        a 'static reference to that data. So it has 'static lifetime.
+        Memory is freed when the program terminates.
 
-        Puede ser mutable tambien.
+        Can be mutable as well.
 
-        Tipos que acepta: T: 'static
+        Types it accepts: T: 'static
     */
     #[test]
     pub fn static_box_leak() {
         let x = Box::new(42);
         let _static_1: &'static i32 = Box::leak(x);
 
-        let s = String::from("creado en runtime");
+        let s = String::from("created at runtime");
         let _static_2: &'static str = Box::leak(s.into_boxed_str());
     }
 
@@ -567,21 +626,21 @@ mod static_lifetime {
     }
 
     /*
-    CASO 5: 'static en Trait Bounds
+    'static in Trait Bounds
     --------------------------------------------
         fn spawn<F>(f: F)
         where
             F: FnOnce() + Send + 'static
                                 ^^^^^^^^
 
-        ¿Por qué tokio::spawn requiere 'static?
+        Why does tokio::spawn require 'static?
 
-        El Future puede ejecutarse en cualquier momento futuro.
-        Si contuviera referencias a datos locales, esos datos
-        podrían morir antes de que el Future termine.
+        The Future can execute at any future moment.
+        If it contained references to local data, that data
+        could die before the Future completes.
 
-        'static garantiza que el Future no depende de datos
-        que puedan morir (solo owned data o refs 'static).
+        'static guarantees that the Future doesn't depend on data
+        that might die (only owned data or 'static refs).
     */
     #[test]
     pub fn static_trait_bounds() {}
@@ -592,32 +651,32 @@ mod static_lifetime {
 PLACEHOLDER: '_
 ========================================================================
 
-    '_ = Hay un lifetime aquí, el compilador lo deduce automaticamente.
+    '_ = There's a lifetime here, the compiler deduces it automatically.
 */
 
 #[cfg(test)]
 mod placeholder {
 
     /*
-    LIFETIME ANÓNIMO '_ (Placeholder)
+    ANONYMOUS LIFETIME '_ (Placeholder)
     --------------------------------------------
     */
     #[test]
     pub fn placeholder_intro() {}
 
     /*
-    USO 1: En parámetros donde el lifetime es obvio
+    USAGE 1: In parameters where the lifetime is obvious
     --------------------------------------------
         struct Excerpt<'a> { ... }
 
-        // Con placeholder (recomendado):
+        // With placeholder (recommended):
         fn print(e: &Excerpt<'_>) { ... }
 
-        // Equivalente explícito:
+        // Equivalent explicit:
         fn print<'a>(e: &Excerpt<'a>) { ... }
 
-        ¿Por qué usar '_? Cuando NO necesitas relacionar el lifetime con otros
-        parámetros o con el retorno.
+        Why use '_? When you don't need to relate the lifetime with other
+        parameters or with the return.
     */
     #[test]
     pub fn placeholder_obvious() {
@@ -626,31 +685,31 @@ mod placeholder {
             _part: &'a str,
         }
 
-        // CON placeholder (más limpio):
+        // WITH placeholder (cleaner):
         fn print_excerpt(_e: &Excerpt<'_>) {}
 
-        // EQUIVALENTE con lifetime explícito (más verboso):
+        // EQUIVALENT with explicit lifetime (more verbose):
         fn _print_excerpt2<'a>(_e: &Excerpt<'a>) {}
 
-        let texto = String::from("Hola mundo");
-        let exc = Excerpt { _part: &texto };
+        let text = String::from("Hello world");
+        let exc = Excerpt { _part: &text };
         print_excerpt(&exc);
     }
 
     /*
-    USO 2: En impl blocks
+    USAGE 2: In impl blocks
     --------------------------------------------
-        // Con placeholder:
+        // With placeholder:
         impl Excerpt<'_> {
             fn len(&self) -> usize { ... }
         }
 
-        // Equivalente explícito:
+        // Equivalent explicit:
         impl<'a> Excerpt<'a> {
             fn len(&self) -> usize { ... }
         }
 
-        Usa '_ cuando el método no necesita referenciar 'a.
+        Use '_ when the method doesn't need to reference 'a.
     */
     #[test]
     pub fn placeholder_impl_blocks() {
@@ -659,27 +718,26 @@ mod placeholder {
             part: &'a str,
         }
 
-        // Cuando implementas para un tipo con lifetime pero no necesitas nombrarlo:
+        // When you implement for a type with lifetime but don't need to name it:
         impl Excerpt<'_> {
             fn len(&self) -> usize {
                 self.part.len()
             }
         }
 
-        let texto = String::from("Hola mundo");
-        let exc = Excerpt { part: &texto };
-        println!("  Excerpt len: {}", exc.len());
-        assert_eq!(exc.len(), 10);
+        let text = String::from("Hello world");
+        let exc = Excerpt { part: &text };
+        assert_eq!(exc.len(), 11);
     }
 
     /*
-    USO 3: En tipos anidados
+    USAGE 3: In nested types
     --------------------------------------------
         fn process(data: &[&'_ str]) { ... }
                            ^^
-                           placeholder para el lifetime interno
+                           placeholder for the internal lifetime
 
-        Equivalente: fn process<'a>(data: &[&'a str])
+        Equivalent: fn process<'a>(data: &[&'a str])
     */
     #[test]
     pub fn placeholder_nested_types() {
@@ -689,20 +747,20 @@ mod placeholder {
             }
         }
 
-        let items = ["uno", "dos", "tres"];
+        let items = ["one", "two", "three"];
         process_refs(&items);
     }
 
     /*
-    CUANDO '_ NO FUNCIONA:
+    WHEN '_ DOESN'T WORK:
     --------------------------------------------
-        // Esto NO compila:
+        // This DOESN'T compile:
         fn longest(x: &str, y: &str) -> &'_ str { ... }
 
         Error: "missing lifetime specifier"
 
-        ¿Por qué? Hay 2 lifetimes de entrada, el compilador no sabe cuál usar
-        para el output. Debes ser explícito:
+        Why? There are 2 input lifetimes, the compiler doesn't know which one to use
+        for the output. You must be explicit:
 
         fn longest<'a>(x: &'a str, y: &'a str) -> &'a str
     */
@@ -714,27 +772,27 @@ mod placeholder {
 ========================================
 FOR<'a>
 ========================================
-    for<'a> = "Para todo lifetime 'a"
+    for<'a> = "For every lifetime 'a"
 
-    Una forma de indicar que un lifetime puede ser cualquiera, es independiente, no se agrega a la firma T<'a>
+    A way to indicate that a lifetime can be any, it's independent, not added to the signature T<'a>
 
-    Usado en:
-        * Bounds en closures como paramámetros (mayormente)
-        * Definición de Traits genéricos
+    Used in:
+        * Bounds in closures as parameters (mostly)
+        * Definition of generic Traits
 
-    Ej:
+    Ex:
         fn apply_to_str<F>(s: &str, f: F) -> &str
         where
             F: for<'a> Fn(&'a str) -> &'a str,
                      ^^^^^^^^^^^^^^^^
-                     para todo lifetime 'a
+                     for every lifetime 'a
 
-        El closure F debe funcionar para cualquier lifetime 'a que se le pase.
+        The closure F must work for any lifetime 'a passed to it.
 
 
-        Version sin for<'a>:
-          * mas restrictivo, solo funciona con un lifetime específico
-          * firma con mas dependencias
+        Version without for<'a>:
+          * more restrictive, only works with a specific lifetime
+          * signature with more dependencies
         fn apply_to_str2<'a, F>(s: &'a str, f: F) -> String
         where
             F: Fn(&'a str) -> String,
@@ -747,7 +805,7 @@ FOR<'a>
 mod for_lifetimes {
     #[test]
     pub fn for_lifetimes_intro() {
-        // para cualquier lifetime 'a independiente de apply_to_str
+        // for every lifetime 'a independent of apply_to_str
         fn apply_to_str<F>(s: &str, f: F) -> String
         where
             F: for<'a> Fn(&'a str) -> String,
@@ -756,11 +814,11 @@ mod for_lifetimes {
         }
 
         let f = |input: &str| -> String { input.to_uppercase() };
-        let result = apply_to_str("hola", f);
+        let _result = apply_to_str("hello", f);
 
-        // Opción 2: sin for<'a>
-        //  * mas restrictivo, solo funciona con un lifetime específico
-        //  * firma con mas dependencias
+        // Option 2: without for<'a>
+        //  * more restrictive, only works with a specific lifetime
+        //  * signature with more dependencies
         fn apply_to_str2<'a, F>(s: &'a str, f: F) -> String
         where
             F: Fn(&'a str) -> String,
@@ -769,39 +827,7 @@ mod for_lifetimes {
         }
 
         let f2 = |input: &str| -> String { input.to_lowercase() };
-        let result2 = apply_to_str2("HOLA", f2);
+        let _result2 = apply_to_str2("HELLO", f2);
     }
 }
 
-/*
-========================================
-BOUNDS CON LIFETIMES
-========================================
-
-    T: 'a = "El tipo T vive al menos tanto como el lifetime 'a"
-
-    Ej:
-        struct Container<'a, T>
-        where
-            T: 'a,
-        {
-            reference: &'a T,
-        }
-
-        El tipo T debe vivir al menos tanto como 'a, porque Container tiene
-        una referencia &'a T.
-
-        Si T fuera un tipo con lifetime más corto que 'a, la referencia
-        podría quedar colgando.
-
-    ----------------------------------------
-
-    T: Trait1 + Trait2 + 'a + 'b
-
-        El tipo T cumple Trait1, Trait2, y vive al menos tanto como el min de 'a y 'b
-
-    T: Send + 'static
-
-        El tipo T puede ser enviado a otros threads y vive siempre que exista su variable, no esta condicionado a otros datos locales.
-
-*/

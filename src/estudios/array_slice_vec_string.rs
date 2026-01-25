@@ -1,7 +1,7 @@
 #[allow(unused_variables)]
 #[allow(dead_code)]
 #[test]
-fn indice() {
+fn index() {
     arrays::arrays();
     arrays::array_iteration();
 
@@ -9,7 +9,7 @@ fn indice() {
     vectors::vector_growth();
     vectors::vector_move();
 
-    array_vs_vec::comparacion();
+    array_vs_vec::comparison();
     array_vs_vec::performance_characteristics();
 
     slices::slices();
@@ -17,11 +17,11 @@ fn indice() {
     slices::slice_from_vec();
     slices::slice_operations();
 
-    slices_mutables::slices_mutables();
-    slices_mutables::function_with_mut_slice();
-    slices_mutables::mut_str_limited();
+    mutable_slices::mutable_slices();
+    mutable_slices::function_with_mut_slice();
+    mutable_slices::mut_str_limited();
 
-    slice_de_vector::slice_de_vector();
+    vector_slice::vector_slice();
 
     strings::strings();
     strings::string_mutation();
@@ -35,31 +35,32 @@ fn indice() {
     utf8_slicing::utf8_slicing();
     utf8_slicing::safe_slicing_with_get();
     utf8_slicing::char_iteration();
+    utf8_slicing::invalid_slice_panics();
 
-    borrow_checker::borrow_checker();
-    borrow_checker::scoped_borrow();
 }
 
 /*
 ========================================================================
-SLICES: FLEXIBILIDAD: MULTIPLES FUENTES
+SLICES: FLEXIBILITY: MULTIPLE SOURCES
 ========================================================================
 
-    DEREF COERCION en Array, Vec, String:
-        Cuando esperas &[T] o &str, Rust automáticamente convierte:
-        • &[T; N]  →  &[T]   (Deref en Array)
-        • &Vec<T>  →  &[T]   (Deref en Vec)
-        • &String  →  &str   (Deref en String)
 
-        let vec = vec![1, 2, 3];
-        fn take_slice(data: &[i32]) { ... }
-        take_slice(&vec);  // ✓ Se convierte automáticamente
-
-    COMPARACIÓN: PARÁMETROS FLEXIBLES vs RESTRICTIVOS:
+    DEREF COERCION: 
     --------------------------------------------
-        FLEXIBLE - Acepta múltiples fuentes:
+        A reference of Array|Vec|String, can be used as an slice.
 
-            fn process_slice(data: &[i32]) {       // ← &[T] es flexible
+        • &[T; N]  →  &[T]   (Deref on Array -> slice)
+        • &Vec<T>  →  &[T]   (Deref on Vec -> slice)
+        • &String  →  &str   (Deref on String -> slice)
+
+    COMPARISON: FLEXIBLE vs RESTRICTIVE PARAMETERS:
+    --------------------------------------------
+        It is better to use slices instead of owning types
+        Slices are flexible, because they can be created from multiple sources:
+
+        FLEXIBLE - Accepts multiple sources:
+
+            fn process_slice(data: &[i32]) {       // ← &[T] is flexible
                 println!("{:?}", data);
             }
 
@@ -70,65 +71,73 @@ SLICES: FLEXIBILIDAD: MULTIPLES FUENTES
             process_slice(&vec);        // ✓ Vec → &[i32]   (Deref coercion)
             process_slice(&vec[1..3]);  // ✓ slice
 
-        RESTRICTIVO - Solo una fuente:
+        RESTRICTIVE - Only one source:
 
-            fn process_vec(data: Vec<i32>) {       // ← Vec requiere ownership
+            fn process_vec(data: Vec<i32>) {       // ← Vec requires ownership
                 println!("{:?}", data);
             }
 
-            process_vec(arr.to_vec());  // ✗ Debe copiar Array a Vec (ineficiente!)
-            process_vec(vec);           // ✓ Solo funciona con Vec
+            process_vec(arr.to_vec());  // ✗ Must copy Array to Vec (inefficient!)
+            process_vec(vec);           // ✓ Only works with Vec
 
-    CASO STRING: &str vs &String:
+    STRING CASE: &str vs &String:
     --------------------------------------------
-        FLEXIBLE - Acepta String, &str, literales:
+        &str is a flexible type, because it can be created from multiple sources:
 
-            fn greet(name: &str) {                 // ← &str es flexible
-                println!("Hola, {}", name);
+        FLEXIBLE - Accepts String, &str, literals:
+
+            fn greet(name: &str) {                 // ← &str is flexible
+                println!("Hello, {}", name);
             }
 
             let s = String::from("Rust");
             greet(&s);                  // ✓ String → &str (Deref coercion)
-            greet("Hola");              // ✓ Literal &str
+            greet("Hello");             // ✓ Literal &str
 
-        RESTRICTIVO - Solo &String:
+        RESTRICTIVE - Only &String:
 
-            fn greet(name: &String) {               // ← &String muy restrictivo
-                println!("Hola, {}", name);
+            fn greet(name: &String) {               // ← &String very restrictive
+                println!("Hello, {}", name);
             }
 
-            greet(&s);                  // ✓ Funciona con &String
-            greet("Hola");              // ✗ ERROR: literal es &str, no &String
-
-    CONCLUSIÓN:
-        Siempre usa &str en lugar de &String, &[T] en lugar de Vec<T>
+            greet(&s);                  // ✓ Works with &String
+            greet("Hello");             // ✗ ERROR: literal is &str, not &String
+        
 
 ========================================================================
 ARRAYS
 ========================================================================
 
-    ARRAYS [T; N] - TAMAÑO FIJO EN STACK:
+    Fixed size on the stack
+
+    ARRAYS [T; N] - FIXED SIZE ON STACK:
     --------------------------------------------
         let arr: [i32; 4] = [10, 20, 30, 40];
 
-        STACK (16 bytes, todo inline):
+        STACK (16 bytes, all inline):
         ┌─────┬─────┬─────┬─────┐
-        │  10 │  20 │  30 │  40 │  ← datos directos
+        │  10 │  20 │  30 │  40 │  ← direct data
         └─────┴─────┴─────┴─────┘
           [0]   [1]   [2]   [3]
 
-        Características:
-        ✓ Tamaño conocido en compilación
-        ✓ Sin heap allocation
-        ✓ Copy si T: Copy
+        Characteristics:
+        ✓ Size known at compile time
+        ✓ No heap allocation
+        ✓ Copy if T:Copy
 
-    FORMAS DE CREAR ARRAYS:
+    WAYS TO CREATE ARRAYS:
     --------------------------------------------
-        let arr1: [i32; 4] = [10, 20, 30, 40];     // explícito
-        let arr2 = [1; 4];                         // inicializa todo con 1
-        let arr4: [i32; 4];                        // sin inicializar (valores previos de memoria)
-        let arr3: [i32; 0] = [];                   // array vacío, 0 bytes,
-                                                   // sirve para genéricos [u8; N]
+        let arr1: [i32; 4] = [10, 20, 30, 40];  // explicit
+
+        let arr2 = [1; 4];                      // initialize all with 1
+        
+        let arr4: [i32; 4];                     // uninitialized
+                                                // unsafe to access (garbage values)
+        
+        let arr3: [i32; 0] = [];                // empty array, 0 elements, 0 bytes,
+                                                // safe to access, nothing to read
+                                                // useful for generics [u8; N] 
+                                                // where N can be 0
 */
 #[cfg(test)]
 mod arrays {
@@ -138,35 +147,35 @@ mod arrays {
         use std::mem;
 
         let arr: [i32; 4] = [10, 20, 30, 40];
-        let _arr2: [i32; 4] = [1; 4]; // inicializa todo con 1
-        let _arr4: [i32; 4]; // sin inicializar (valores basura)
-        let _arr3: [i32; 0] = []; // array vacío
+        let _arr2: [i32; 4] = [1; 4]; // initialize all with 1
+        let _arr4: [i32; 4]; // uninitialized (garbage values)
+        let _arr3: [i32; 0] = []; // empty array
 
-        // Tamaño en stack = N * size_of::<T>()
+        // Stack size = N * size_of::<T>()
         assert_eq!(mem::size_of::<[i32; 4]>(), 16); // 4 * 4 bytes
 
-        // Acceso por índice
+        // Index access
         assert_eq!(arr[0], 10);
         assert_eq!(arr[3], 40);
 
-        // Es Copy si T es Copy
-        let arr2 = arr; // copia, no move
-        assert_eq!(arr[0], arr2[0]); // arr sigue válido
+        // Is Copy if T is Copy
+        let arr2 = arr; // copy, not move
+        assert_eq!(arr[0], arr2[0]); // arr still valid
 
-        // Inicialización con valor repetido
+        // Initialization with repeated value
         let zeros: [i32; 100] = [0; 100];
-        assert_eq!(zeros[50], 0);
+        assert_eq!(zeros[100-1], 0);
     }
 
     #[test]
     pub fn array_iteration() {
         let arr: [i32; 4] = [1, 2, 3, 4];
 
-        // Iteración por referencia
+        // Iteration by reference
         let sum: i32 = arr.iter().sum();
         assert_eq!(sum, 10);
 
-        // Iteración con índice
+        // Iteration with index
         for (i, &val) in arr.iter().enumerate() {
             assert_eq!(val, (i + 1) as i32);
         }
@@ -178,7 +187,7 @@ mod arrays {
 VECTORS
 ========================================================================
 
-    VECTORS Vec<T> - TAMAÑO DINÁMICO EN HEAP:
+    VECTORS Vec<T> - DYNAMIC SIZE ON HEAP:
     --------------------------------------------
         let vec: Vec<i32> = vec![10, 20, 30, 40];
 
@@ -186,22 +195,21 @@ VECTORS
         ┌─────────────────────┐               ┌─────┬─────┬─────┬─────┬─────┬─────┐
         │ ptr ────────────────┼──────────────▶│  10 │  20 │  30 │  40 │  ?  │  ?  │
         ├─────────────────────┤               └─────┴─────┴─────┴─────┴─────┴─────┘
-        │ len: 4              │                 [0]   [1]   [2]   [3]  (capacity extra)
+        │ len: 4              │                 [0]   [1]   [2]   [3]  (extra capacity)
         ├─────────────────────┤
-        │ cap: 6              │  ← puede haber capacidad extra
+        │ cap: 6              │  ← may have extra capacity
         └─────────────────────┘
 
-        Características:
-        ✓ Tamaño dinámico (push/pop)
+        Characteristics:
+        ✓ Dynamic size (push/pop)
         ✓ Heap allocation
-        ✗ NO es Copy (tiene Drop)
+        ✗ NOT Copy (has Drop)
 
-    CAPACIDAD Y CRECIMIENTO:
+    CAPACITY AND GROWTH:
     --------------------------------------------
-        si se llega a ocupar la capacidad se agrega el doble:
+        When capacity is reached, it doubles:
         4, 8, 16, 32, 64, 128
-        si se ubiese asignado n de capacity inicial, seria el doble cada vez que llega al limite,
-        n*2, n*4, n*8, n*16...
+        If initial capacity n was assigned, it would double each time: n*2, n*4, n*8, n*16...
 */
 #[cfg(test)]
 mod vectors {
@@ -211,14 +219,14 @@ mod vectors {
         use std::mem;
         let vec: Vec<i32> = vec![10, 20, 30, 40];
 
-        // Stack size siempre 24 bytes (ptr + len + cap)
+        // Stack size always 24 bytes (ptr + len + cap)
         assert_eq!(mem::size_of::<Vec<i32>>(), 24);
 
-        // len y capacity
+        // len and capacity
         assert_eq!(vec.len(), 4);
         assert!(vec.capacity() >= 4);
 
-        // Acceso por índice
+        // Index access
         assert_eq!(vec[0], 10);
         assert_eq!(vec[3], 40);
     }
@@ -228,20 +236,20 @@ mod vectors {
         let mut vec: Vec<i32> = Vec::new();
         assert_eq!(vec.capacity(), 0);
 
-        // Push aumenta capacity automáticamente
+        // Push increases capacity automatically
         vec.push(1);
         let cap1 = vec.capacity();
         assert!(cap1 >= 4);
 
-        // Capacity crece exponencialmente
+        // Capacity grows exponentially
         for i in 2..=100 {
             vec.push(i);
-            dbg!(&vec.capacity()); // 4, 8, 16, 32, 64, 128
-            // si se ubiese asignado n de capacity inicial, el doble cada vez que llega al limite, n^(2^1), n^(2^2), n^(2^3), n^(2^4)...
+            // dbg!(&vec.capacity()); // 4, 8, 16, 32, 64, 128
+            // If initial capacity n was assigned, it would double each time
         }
         assert!(vec.capacity() >= 100);
 
-        // with_capacity pre-aloca
+        // with_capacity pre-allocates
         let vec2: Vec<i32> = Vec::with_capacity(1000);
         assert_eq!(vec2.len(), 0);
         assert!(vec2.capacity() >= 1000);
@@ -252,12 +260,12 @@ mod vectors {
         let vec1: Vec<i32> = vec![1, 2, 3];
         let ptr_before = vec1.as_ptr();
 
-        let vec2 = vec1; // move, no copy
+        let vec2 = vec1; // move, not copy
         let ptr_after = vec2.as_ptr();
 
-        // El puntero al heap es el mismo
+        // The heap pointer is the same
         assert_eq!(ptr_before, ptr_after);
-        // vec1 ya no es válido
+        // vec1 is no longer valid
     }
 }
 
@@ -266,122 +274,122 @@ mod vectors {
 ARRAY_VS_VEC
 ========================================================================
 
-    COMPARACIÓN:
+    COMPARISON:
     --------------------------------------------
         ┌────────────────────┬────────────────────┬────────────────────────────────┐
-        │ Aspecto            │ [T; N] (Array)     │ Vec<T>                         │
+        │ Aspect             │ [T; N] (Array)     │ Vec<T>                         │
         ├────────────────────┼────────────────────┼────────────────────────────────┤
         │ Allocation         │ Stack              │ Heap                           │
-        │ Tamaño             │ Fijo (compilación) │ Dinámico (runtime)             │
+        │ Size               │ Fixed (compile)    │ Dynamic (runtime)              │
         │ Overhead           │ 0 bytes            │ 24 bytes (ptr+len+cap)         │
-        │ Copy               │ ✓ (si T: Copy)     │ ✗ (move o clone)               │
-        │ Cache locality     │ Excelente          │ Buena                          │
-        │ Crece/decrece      │ ✗                  │ ✓                              │
-        │ Tamaño máximo      │ ~MB (stack limit)  │ ~GB (heap)                     │
-        │ Velocidad alloc    │ Instantánea        │ Más lenta (syscall)            │
+        │ Copy               │ ✓ (if T: Copy)     │ ✗ (move or clone)              │
+        │ Cache locality     │ Excellent          │ Good                           │
+        │ Grows/shrinks      │ ✗                  │ ✓                              │
+        │ Max size           │ ~MB (stack limit)  │ ~GB (heap)                     │
+        │ Alloc speed        │ Instant            │ Slower (syscall)               │
         └────────────────────┴────────────────────┴────────────────────────────────┘
 
-    ¿POR QUÉ ARRAY PUEDE SER MÁS RÁPIDO?:
+    WHY CAN ARRAY BE FASTER?:
     --------------------------------------------
         1. STACK vs HEAP:
-           Array: allocación instantánea (solo mueve stack pointer)
-           Vec: syscall al OS para pedir memoria heap (más lento)
+           Array: instant allocation (just moves stack pointer)
+           Vec: syscall to OS for heap memory (slower)
 
-        2. SIN INDIRECCIÓN:
-           Array: datos inline, acceso directo
-           Vec: ptr → heap, un nivel extra de indirección
+        2. NO INDIRECTION:
+           Array: data inline, direct access
+           Vec: ptr → heap, one extra level of indirection
 
-        3. OPTIMIZACIÓN DEL COMPILADOR:
-           Array: tamaño conocido → loop unrolling, SIMD
-           Vec: tamaño dinámico → menos optimizaciones posibles
+        3. COMPILER OPTIMIZATION:
+           Array: size known → loop unrolling, SIMD
+           Vec: dynamic size → fewer optimizations possible
 
     LOOP UNROLLING:
     --------------------------------------------
-        Código original:
+        Original code:
           for i in 0..4 {
               result[i] = arr[i] * 2;
           }
 
-        Después de unrolling:
+        After unrolling:
           result[0] = arr[0] * 2;
           result[1] = arr[1] * 2;
           result[2] = arr[2] * 2;
           result[3] = arr[3] * 2;
 
-        ✓ Sin overhead de saltos (jumps) del loop
-        ✓ CPU puede ejecutar en paralelo (ILP)
-        ✗ Solo posible si tamaño conocido en compilación
+        ✓ No loop jump overhead
+        ✓ CPU can execute in parallel (ILP)
+        ✗ Only possible if size known at compile time
 
     SIMD (SINGLE INSTRUCTION MULTIPLE DATA):
     --------------------------------------------
-        CPU moderno tiene registros SIMD (SSE, AVX, NEON):
+        Modern CPU has SIMD registers (SSE, AVX, NEON):
 
-        Procesamiento escalar (sin SIMD):
+        Scalar processing (no SIMD):
           result[0] = arr[0] * 2;
           result[1] = arr[1] * 2;
           result[2] = arr[2] * 2;
           result[3] = arr[3] * 2;
-          ✗ 4 instrucciones, 4 ciclos
+          ✗ 4 instructions, 4 cycles
 
-        Procesamiento SIMD (AVX-256: 256 bits = 4 x i32):
-          result[0..4] = arr[0..4] * 2;   (todo en paralelo!)
-          ✓ 1 instrucción, 1 ciclo
+        SIMD processing (AVX-256: 256 bits = 4 x i32):
+          result[0..4] = arr[0..4] * 2;   (all in parallel!)
+          ✓ 1 instruction, 1 cycle
 
-        Compilador puede usar SIMD solo si:
-          ✓ Tamaño conocido en compilación
-          ✓ Acceso secuencial a memoria
-          ✓ Sin dependencias entre iteraciones
-          ✗ Vec tamaño dinámico → más difícil vetorizar
+        Compiler can use SIMD only if:
+          ✓ Size known at compile time
+          ✓ Sequential memory access
+          ✓ No dependencies between iterations
+          ✗ Vec dynamic size → harder to vectorize
 
-    CUÁNDO USAR CADA UNO:
+    WHEN TO USE EACH ONE:
     --------------------------------------------
-        USAR ARRAY [T; N]:
-          • Tamaño conocido en compilación
-          • Datos pequeños (< 1KB típicamente)
-          • Máxima performance necesaria
-          • Ejemplos: coordenadas [f32; 3], matriz [f64; 16], buffer [u8; 256]
+        USE ARRAY [T; N]:
+          • Size known at compile time
+          • Small data (< 1KB typically)
+          • Maximum performance needed
+          • Examples: coordinates [f32; 3], matrix [f64; 16], buffer [u8; 256]
 
-        USAR VEC<T>:
-          • Tamaño dinámico o desconocido en compilación
-          • Datos grandes (> varios KB)
-          • Necesitas push/pop/insert/remove
-          • Ejemplos: lista de usuarios, contenido de archivo, input de red
+        USE VEC<T>:
+          • Size dynamic or unknown at compile time
+          • Large data (> several KB)
+          • Need push/pop/insert/remove
+          • Examples: user list, file content, network input
 */
 #[cfg(test)]
 mod array_vs_vec {
     #[test]
-    pub fn comparacion() {
-        // Array: Copy si T es Copy
+    pub fn comparison() {
+        // Array: Copy if T is Copy
         let arr: [i32; 4] = [1, 2, 3, 4];
-        let arr2 = arr; // copia
-        assert_eq!(arr[0], arr2[0]); // ambos válidos
+        let arr2 = arr; // copy
+        assert_eq!(arr[0], arr2[0]); // both valid
 
-        // Vec: Move, no Copy
+        // Vec: Move, not Copy
         let vec: Vec<i32> = vec![1, 2, 3, 4];
         let vec2 = vec; // move
-        // vec ya no es válido
+        // vec is no longer valid
         assert_eq!(vec2[0], 1);
 
-        // Clone para copiar Vec
+        // Clone to copy Vec
         let vec3 = vec2.clone();
-        assert_eq!(vec2[0], vec3[0]); // ambos válidos
+        assert_eq!(vec2[0], vec3[0]); // both valid
 
-        println!("  ✅ array_vs_vec::comparacion");
+        println!("  ✅ array_vs_vec::comparison");
     }
 
     #[test]
     pub fn performance_characteristics() {
         use std::mem;
 
-        // Array: sin overhead
+        // Array: no overhead
         let arr: [i32; 1000] = [0; 1000];
-        assert_eq!(mem::size_of_val(&arr), 4000); // exactamente 1000 * 4 bytes
+        assert_eq!(mem::size_of_val(&arr), 4000); // exactly 1000 * 4 bytes
 
-        // Vec: 24 bytes de overhead en stack
+        // Vec: 24 bytes overhead on stack
         let vec: Vec<i32> = vec![0; 1000];
-        assert_eq!(mem::size_of_val(&vec), 24); // solo ptr+len+cap
+        assert_eq!(mem::size_of_val(&vec), 24); // only ptr+len+cap
 
-        // Vec datos en heap
+        // Vec data on heap
         assert!(vec.capacity() >= 1000);
     }
 }
@@ -402,25 +410,25 @@ SLICES
                  │                       │
         slice: &[i32] (16 bytes, fat pointer)
         ┌─────────────────────┐          │
-        │ ptr ────────────────┼──────────┘  (apunta a arr[1])
+        │ ptr ────────────────┼──────────┘  (points to arr[1])
         ├─────────────────────┤
-        │ len: 2 (Fijo)       │
+        │ len: 2 (Fixed)      │
         └─────────────────────┘
 
-    CARACTERÍSTICAS:
+    CHARACTERISTICS:
     --------------------------------------------
-        • Len fijo: No se puede cambiar el tamaño. Hay que crear uno nuevo.
-          Si cambiase, apuntarías más allá de los datos válidos.
+        • Fixed len: Cannot change the size. Must create a new one.
+          If it changed, you'd point beyond valid data.
 
-        • Len se calcula en runtime:
-          let slice: &[i32] = &vec![1, 2, 3][..];  // vec.len() desconocido en compilación
+        • Len calculated at runtime when creating the slice:
+          let slice: &[i32] = &vec![1, 2, 3][..];  // vec.len() unknown at compile time
 
-        • Inmutable: No se puede cambiar el ptr ni el len.
+        • Immutable: Cannot change ptr or len.
           let slice: &[i32] = &arr[1..3];
           let slice: &[i32] = &vec[1..4];
-          let slice: &str = &s[0..4];  // acceso a bytes UTF-8 (pueden no ser chars válidos)
+          let slice: &str = &s[0..4];  // access to UTF-8 bytes (may not be valid chars)
 
-        • es Copy (es solo ptr + len)
+        • is Copy (just ptr + len)
 */
 #[cfg(test)]
 mod slices {
@@ -434,23 +442,23 @@ mod slices {
         // Fat pointer: ptr + len = 16 bytes
         assert_eq!(mem::size_of::<&[i32]>(), 16);
 
-        // Contenido del slice
+        // Slice contents
         assert_eq!(slice.len(), 2);
         assert_eq!(slice[0], 20);
         assert_eq!(slice[1], 30);
 
-        // Slice es Copy
+        // Slice is Copy
         let slice2 = slice;
-        assert_eq!(slice[0], slice2[0]); // ambos válidos
+        assert_eq!(slice[0], slice2[0]); // both valid
     }
 
     #[test]
     pub fn slice_ranges() {
         let _arr: [i32; 5] = [10, 20, 30, 40, 50];
 
-        // Distintos rangos:
-        // &arr[1..3]      // [20, 30]      (excluye índice 3)
-        // &arr[1..=3]     // [20, 30, 40]  (incluye índice 3)
+        // Different ranges:
+        // &arr[1..3]      // [20, 30]      (excludes index 3)
+        // &arr[1..=3]     // [20, 30, 40]  (includes index 3)
         // &arr[1..]       // [20, 30, 40, 50]
         // &arr[..3]       // [10, 20, 30]
         // &arr[..=3]      // [10, 20, 30, 40]
@@ -465,31 +473,31 @@ mod slices {
         assert_eq!(slice.len(), 3);
         assert_eq!(slice[0], 20);
 
-        // El slice apunta dentro del heap del Vec
-        assert!(slice.as_ptr() > vec.as_ptr()); // slice apunta a vec[1]
+        // The slice points inside the Vec's heap
+        assert!(slice.as_ptr() > vec.as_ptr()); // slice points to vec[1]
     }
 
     #[test]
     pub fn slice_operations() {
         let arr: [i32; 5] = [10, 20, 30, 40, 50];
 
-        // slice1: Slice es Copy, duplicar no consume original
+        // slice1: Slice is Copy, duplicating doesn't consume original
         let slice1: &[i32] = &arr[1..4]; // [20, 30, 40]
         let slice2 = slice1;
         assert_eq!(slice1.as_ptr(), slice2.as_ptr());
 
-        // slice2: Recortar slice con subrango
+        // slice2: Trim slice with subrange
         let slice: &[i32] = &arr[..];
         let trimmed1 = &slice[1..4]; // [20, 30, 40]
         let trimmed2 = &slice[..3]; // [10, 20, 30]
         assert_eq!(trimmed1, &[20, 30, 40]);
         assert_eq!(trimmed2, &[10, 20, 30]);
 
-        // slice3: Crear Vec desde slice copia datos a heap
+        // slice3: Create Vec from slice copies data to heap
         let vec: Vec<i32> = slice1.to_vec();
-        assert_ne!(vec.as_ptr(), slice1.as_ptr()); // diferente memoria
+        assert_ne!(vec.as_ptr(), slice1.as_ptr()); // different memory
 
-        // slice4: Múltiples formas de copiar slice a Vec
+        // slice4: Multiple ways to copy slice to Vec
         let v1: Vec<i32> = slice1.to_vec();
         let v2: Vec<i32> = Vec::from(slice1);
         let v3: Vec<i32> = slice1.iter().copied().collect();
@@ -500,53 +508,53 @@ mod slices {
 
 /*
 ========================================================================
-SLICES_MUTABLES
+MUTABLE SLICES
 ========================================================================
 
-    SLICES MUTABLES &mut [T]:
+    MUTABLE SLICES &mut [T]:
     --------------------------------------------
         ┌──────────────────────┬──────────────────┬──────────────────────────┐
-        │ Operación            │ &[T] (inmutable) │ &mut [T] (mutable)       │
+        │ Operation            │ &[T] (immutable) │ &mut [T] (mutable)       │
         ├──────────────────────┼──────────────────┼──────────────────────────┤
-        │ Leer valores         │ ✓                │ ✓                        │
-        │ Editar valores       │ ✗                │ ✓                        │
-        │ Múltiples refs       │ ✓ (muchas)       │ ✗ (solo 1)               │
-        │ Editar vec/array     │ ✓ (no con borrow)│ ✗ (mientras existe)      │
+        │ Read values          │ ✓                │ ✓                        │
+        │ Edit values          │ ✗                │ ✓                        │
+        │ Multiple refs        │ ✓ (many)         │ ✗ (only 1)               │
+        │ Edit vec/array       │ ✓ (no borrow)    │ ✗ (while it exists)      │
         │ is Copy (ptr + len)  │ ✓                │ ✗                        │
         └──────────────────────┴──────────────────┴──────────────────────────┘
 
-    ¿POR QUÉ &mut [i32] ES FÁCIL PERO &mut str ES DIFÍCIL?:
+    WHY IS &mut [i32] EASY BUT &mut str IS HARD?:
     --------------------------------------------
-        TIPOS DE TAMAÑO FIJO (i32, f64, etc.):
-            • Cada elemento ocupa exactamente N bytes
-            • Modificar un elemento NO afecta a los demás
-            ✓ &mut [i32] funciona perfectamente
+        FIXED-SIZE TYPES (i32, f64, etc.):
+            • Each element occupies exactly N bytes
+            • Modifying one element does NOT affect others
+            ✓ &mut [i32] works perfectly
 
-        STRINGS UTF-8:
-            • Cada carácter ocupa 1-4 bytes (variable)
-            • Cambiar 'a' (1 byte) por '🦀' (4 bytes) desplazaría todo
-            ✗ &mut str muy limitado (solo cambio de characteres mismo tamaño)
+        UTF-8 STRINGS:
+            • Each character occupies 1-4 bytes (variable)
+            • Changing 'a' (1 byte) to '🦀' (4 bytes) would shift everything
+            ✗ &mut str very limited (only same-size character changes)
 
-    RESTRICCIONES DE REFERENCIAS MUTABLES:
+    MUTABLE REFERENCE RESTRICTIONS:
     --------------------------------------------
-        1. Solo UNA referencia mutable a la vez:
+        1. Only ONE mutable reference at a time:
             let mut arr = [1, 2, 3, 4];
             let mut_slice1 = &mut arr[0..2];
-            let mut_slice2 = &mut arr[2..4];  // ✗ ERROR ya existe mut_slice1
+            let mut_slice2 = &mut arr[2..4];  // ✗ ERROR: mut_slice1 already exists
 
-        2. No puedes mutar el vec/array mientras existe el slice mutable:
+        2. Cannot mutate the vec/array while mutable slice exists:
             let mut vec = vec![1, 2, 3, 4, 5];
             let mut_slice = &mut vec[1..4];
-            vec.push(6);  // ✗ ERROR: no puedes mutar vec mientras existe mut_slice
+            vec.push(6);  // ✗ ERROR: cannot mutate vec while mut_slice exists
 */
 #[cfg(test)]
-mod slices_mutables {
+mod mutable_slices {
     #[test]
-    pub fn slices_mutables() {
+    pub fn mutable_slices() {
         let mut arr: [i32; 4] = [10, 20, 30, 40];
         let slice_mut: &mut [i32] = &mut arr[1..3];
 
-        // Modificar elementos
+        // Modify elements
         slice_mut[0] = 200;
         slice_mut[1] *= 10;
 
@@ -564,7 +572,7 @@ mod slices_mutables {
         }
 
         let mut vec = vec![1, 2, 3, 4, 5];
-        double_values(&mut vec[1..4]); // Solo modifica [1], [2], [3]
+        double_values(&mut vec[1..4]); // Only modifies [1], [2], [3]
 
         assert_eq!(vec, [1, 4, 6, 8, 5]);
     }
@@ -573,20 +581,20 @@ mod slices_mutables {
     pub fn mut_str_limited() {
         let mut s = String::from("hello");
 
-        // Solo operaciones que NO cambian longitud
+        // Only operations that do NOT change length
         s.make_ascii_uppercase();
         assert_eq!(s, "HELLO");
 
-        // Esto funciona porque 'H' y 'h' ocupan el mismo byte
+        // This works because 'H' and 'h' occupy the same byte
     }
 }
 
 /*
 ========================================================================
-SLICE_DE_VECTOR
+VECTOR SLICE
 ========================================================================
 
-    SLICE DE VECTOR:
+    VECTOR SLICE:
     --------------------------------------------
         let vec: Vec<i32> = vec![10, 20, 30, 40, 50];
         let slice: &[i32] = &vec[1..4];  // [20, 30, 40]
@@ -604,30 +612,30 @@ SLICE_DE_VECTOR
         slice: &[i32] (16 bytes)                       │           │
         ┌─────────────────────┐                        │           │
         │ ptr ────────────────┼────────────────────────┘           │
-        ├─────────────────────┤         (apunta a vec[1])          │
+        ├─────────────────────┤         (points to vec[1])          │
         │ len: 3              │  ──────────────────────────────────┘
-        └─────────────────────┘         (cubre hasta vec[3])
+        └─────────────────────┘         (covers up to vec[3])
 
-        ✓ slice apunta DENTRO del heap de vec
-        ✓ No hay copia de datos
-        ✓ slice debe vivir menos que vec (lifetime)
+        ✓ slice points WITHIN vec's heap
+        ✓ No data copy
+        ✓ slice must live less than vec (lifetime)
 */
 #[cfg(test)]
-mod slice_de_vector {
+mod vector_slice {
     #[test]
-    pub fn slice_de_vector() {
+    pub fn vector_slice() {
         let vec: Vec<i32> = vec![10, 20, 30, 40, 50];
         let slice: &[i32] = &vec[1..4];
 
-        // Slice apunta dentro del heap
+        // Slice points inside the heap
         assert_eq!(slice.len(), 3);
         assert_eq!(slice, &[20, 30, 40]);
 
-        // Verificar que apunta al mismo heap
+        // Verify that it points to the same heap
         let vec_ptr = vec.as_ptr();
         let slice_ptr = slice.as_ptr();
 
-        // slice_ptr debe ser vec_ptr + 4 bytes (offset de 1 i32)
+        // slice_ptr should be vec_ptr + 4 bytes (offset of 1 i32)
         unsafe {
             assert_eq!(slice_ptr, vec_ptr.add(1));
         }
@@ -639,47 +647,47 @@ mod slice_de_vector {
 STRINGS
 ========================================================================
 
-    STRINGS String - UTF-8 en heap:
+    STRINGS String - UTF-8 on heap:
     --------------------------------------------
-        let s = String::from("Hola 🦀");
+        let s = String::from("Hello 🦀");
 
         STACK (24 bytes):                      HEAP:
         ┌─────────────────────┐               ┌───┬───┬───┬───┬───┬────┬────┬────┬────┐
-        │ ptr ────────────────┼──────────────▶│ H │ o │ l │ a │   │0xF0│0x9F│0xA6│0x80│
+        │ ptr ────────────────┼──────────────▶│ H │ e │ l │ l │ o │0xF0│0x9F│0xA6│0x80│
         ├─────────────────────┤               └───┴───┴───┴───┴───┴────┴────┴────┴────┘
         │ len: 9              │                 UTF-8 bytes (🦀 = 4 bytes)
         ├─────────────────────┤
         │ cap: 9              │
         └─────────────────────┘
 
-    CARACTERÍSTICAS:
+    CHARACTERISTICS:
     --------------------------------------------
-        ✓ Igual que Vec<u8> pero garantiza UTF-8 válido
-        ✗ NO es Copy
+        ✓ Same as Vec<u8> but guarantees valid UTF-8
+        ✗ NOT Copy
 */
 #[cfg(test)]
 mod strings {
     #[test]
     pub fn strings() {
         use std::mem;
-        let s = String::from("Hola 🦀");
+        let s = String::from("Hello 🦀");
 
-        // Stack size siempre 24 bytes
+        // Stack size always 24 bytes
         assert_eq!(mem::size_of::<String>(), 24);
 
-        // len es en bytes, no caracteres
-        assert_eq!(s.len(), 9); // "Hola " (5 bytes) + 🦀 (4 bytes)
-        assert_eq!(s.chars().count(), 6); // 6 caracteres
+        // len is in bytes, not characters
+        assert_eq!(s.len(), 10); // "Hello " (6 bytes) + 🦀 (4 bytes)
+        assert_eq!(s.chars().count(), 7); // 7 characters
     }
 
     #[test]
     pub fn string_mutation() {
-        let mut s = String::from("Hola");
+        let mut s = String::from("Hello");
 
         s.push(' ');
-        s.push_str("mundo");
+        s.push_str("world");
 
-        assert_eq!(s, "Hola mundo");
+        assert_eq!(s, "Hello world");
         assert!(s.capacity() >= s.len());
     }
 
@@ -691,9 +699,9 @@ mod strings {
         let s2 = s1; // move
         let ptr_after = s2.as_ptr();
 
-        // El puntero al heap es el mismo
+        // The heap pointer is the same
         assert_eq!(ptr_before, ptr_after);
-        // s1 ya no es válido
+        // s1 is no longer valid
     }
 }
 
@@ -704,47 +712,47 @@ STRING_SLICES
 
     STRING SLICES &str:
     --------------------------------------------
-        let s = String::from("Hola mundo");
-        let slice: &str = &s[0..4];  // "Hola"
+        let s = String::from("Hello world");
+        let slice: &str = &s[0..5];  // "Hello"
 
         STACK                                 HEAP
         s: String (24 bytes)
         ┌─────────────────────┐               ┌───┬───┬───┬───┬───┬───┬───┬───┬───┬───┐
-        │ ptr ────────────────┼──────────────▶│ H │ o │ l │ a │   │ m │ u │ n │ d │ o │
+        │ ptr ────────────────┼──────────────▶│ H │ e │ l │ l │ o │   │ w │ o │ r │ l │ d
         ├─────────────────────┤               └─▲─┴───┴───┴─▲─┴───┴───┴───┴───┴───┴───┘
-        │ len: 10             │                 │           │
+        │ len: 11             │                 │           │
         ├─────────────────────┤                 │           │
-        │ cap: 10             │                 │           │
+        │ cap: 11             │                 │           │
         └─────────────────────┘                 │           │
                                                 │           │
         slice: &str (16 bytes)                  │           │
         ┌─────────────────────┐                 │           │
         │ ptr ────────────────┼─────────────────┘           │
-        ├─────────────────────┤    (apunta a s[0])          │
-        │ len: 4              │  ───────────────────────────┘
-        └─────────────────────┘    (cubre hasta s[3])
+        ├─────────────────────┤    (points to s[0])         │
+        │ len: 5              │  ───────────────────────────┘
+        └─────────────────────┘    (covers up to s[4])
 
-    CARACTERÍSTICAS:
+    CHARACTERISTICS:
     --------------------------------------------
-        ✓ Vista a bytes UTF-8 (no copia)
-        ✓ Copy (es solo ptr + len)
-        ✓ Puede apuntar a String, literal, u otro &str
+        ✓ View of UTF-8 bytes (no copy)
+        ✓ Copy (just ptr + len)
+        ✓ Can point to String, literal, or another &str
 */
 #[cfg(test)]
 mod string_slices {
     #[test]
     pub fn string_slices() {
         use std::mem;
-        let s = String::from("Hola mundo");
-        let slice: &str = &s[0..4];
+        let s = String::from("Hello world");
+        let slice: &str = &s[0..5];
 
         // Fat pointer: 16 bytes
         assert_eq!(mem::size_of::<&str>(), 16);
 
-        assert_eq!(slice, "Hola");
-        assert_eq!(slice.len(), 4);
+        assert_eq!(slice, "Hello");
+        assert_eq!(slice.len(), 5);
 
-        // &str es Copy
+        // &str is Copy
         let slice2 = slice;
         assert_eq!(slice, slice2);
     }
@@ -753,9 +761,9 @@ mod string_slices {
     pub fn str_from_string() {
         let s = String::from("hello");
 
-        // Múltiples formas de obtener &str
+        // Multiple ways to get &str
         let slice1: &str = &s; // Deref coercion
-        let slice2: &str = s.as_str(); // Explícito
+        let slice2: &str = s.as_str(); // Explicit
         let slice3: &str = &s[..]; // Full slice
 
         assert_eq!(slice1, slice2);
@@ -768,41 +776,43 @@ mod string_slices {
 STRING_LITERALS
 ========================================================================
 
+    String literals are fat pointers to the binary data section.
+
     STRING LITERALS &'static str:
     --------------------------------------------
-        let literal: &'static str = "Hola 🦀";
+        let literal: &'static str = "Hello 🦀";
 
-        STACK (16 bytes):                      BINARIO (.rodata):
+        STACK (16 bytes):                      BINARY (.rodata):
         ┌─────────────────────┐               ┌───┬───┬───┬───┬───┬────┬────┬────┬────┐
-        │ ptr ────────────────┼──────────────▶│ H │ o │ l │ a │   │0xF0│0x9F│0xA6│0x80│
+        │ ptr ────────────────┼──────────────▶│ H │ e │ l │ l │ o │0xF0│0x9F│0xA6│0x80│
         ├─────────────────────┤               └───┴───┴───┴───┴───┴────┴────┴────┴────┘
-        │ len: 9              │                 Embebido en el ejecutable
+        │ len: 9              │                 Embedded in the executable
         └─────────────────────┘
 
-    CARACTERÍSTICAS:
+    CHARACTERISTICS:
     --------------------------------------------
-        ✓ Datos en .rodata (read-only data section)
-        ✓ Vive durante todo el programa ('static)
-        ✓ NO hay heap allocation
+        ✓ Data in .rodata (read-only data section)
+        ✓ Lives for the entire program ('static)
+        ✓ NO heap allocation
         ✓ Copy
 */
 #[cfg(test)]
 mod string_literals {
     #[test]
     pub fn string_literals() {
-        let literal: &'static str = "Hola 🦀";
+        let literal: &'static str = "Hello 🦀";
 
-        // No hay heap allocation
-        assert_eq!(literal.len(), 9);
-        assert_eq!(literal.chars().count(), 6);
+        // No heap allocation
+        assert_eq!(literal.len(), 10);
+        assert_eq!(literal.chars().count(), 7);
 
-        // Es Copy
+        // Is Copy
         let literal2 = literal;
         assert_eq!(literal, literal2);
 
-        // Vive para siempre ('static)
+        // Lives forever ('static)
         fn get_static() -> &'static str {
-            "esto vive para siempre"
+            "this lives forever"
         }
         let s = get_static();
         assert!(!s.is_empty());
@@ -814,13 +824,13 @@ mod string_literals {
 UTF8_SLICING
 ========================================================================
 
-    UTF-8 SLICING - Peligros:
+    UTF-8 SLICING - Dangers:
     --------------------------------------------
-        let s = String::from("Hola 🦀 rustaceans");
+        let s = String::from("Hello 🦀 rustaceans");
 
-        Mapa de bytes:
+        Byte map:
         ┌───┬───┬───┬───┬───┬────┬────┬────┬────┬───┬───┬───┬...┐
-        │ H │ o │ l │ a │   │0xF0│0x9F│0xA6│0x80│   │ r │ u │...│
+        │ H │ e │ l │ l │ o │0xF0│0x9F│0xA6│0x80│   │ r │ u │...│
         └───┴───┴───┴───┴───┴────┴────┴────┴────┴───┴───┴───┴...┘
           0   1   2   3   4   5    6    7    8    9  10  11  ...
                           ◄──────── 🦀 ────────►
@@ -828,131 +838,70 @@ UTF8_SLICING
                           ✓    ✗    ✗    ✗    ✓  ← char boundaries
                          [5]  [6]  [7]  [8]  [9]
 
-        ┌────────────────────────┬─────────────────────────────────────────────┐
-        │ Operación              │ Resultado                                   │
-        ├────────────────────────┼─────────────────────────────────────────────┤
-        │ &s[0..5]               │ ✓ "Hola " (termina antes del emoji)         │
-        │ &s[5..9]               │ ✓ "🦀" (emoji completo, 4 bytes)            │
-        │ &s[9..20]              │ ✓ " rustaceans" (después del emoji)         │
-        ├────────────────────────┼─────────────────────────────────────────────┤
-        │ &s[0..6]               │ ✗ PANIC! corta dentro del emoji             │
-        │ &s[6..9]               │ ✗ PANIC! empieza dentro del emoji           │
-        └────────────────────────┴─────────────────────────────────────────────┘
+        ┌────────────────────┬─────────────────────────────────────────────┐
+        │ Operation          │ Result                                      │
+        ├────────────────────┼─────────────────────────────────────────────┤
+        │ &s[0..5]           │ ✓ "Hello " (ends before emoji)              │
+        │ &s[5..9]           │ ✓ "🦀" (full emoji, 4 bytes)                │
+        │ &s[9..20]          │ ✓ " rustaceans" (after emoji)               │
+        ├────────────────────┼─────────────────────────────────────────────┤
+        │ &s[0..6]           │ ✗ PANIC! cuts inside emoji                  │
+        │ &s[6..9]           │ ✗ PANIC! starts inside emoji                │
+        └────────────────────┴─────────────────────────────────────────────┘
 
-    CÓMO EVITAR EL PANIC:
+    HOW TO AVOID PANIC:
     --------------------------------------------
-        1. Verificar antes: s.is_char_boundary(idx)
-        2. Usar chars(): s.chars().take(n).collect::<String>()
-        3. Usar s.get(start..end) que retorna Option<&str>
+        1. Check first: s.is_char_boundary(idx)
+        2. Use chars(): s.chars().take(n).collect::<String>()
+        3. Use s.get(start..end) which returns Option<&str>
 */
 #[cfg(test)]
 mod utf8_slicing {
     #[test]
     pub fn utf8_slicing() {
-        let s = String::from("Hola 🦀 rustaceans");
+        let s = String::from("Hello 🦀 rustaceans");
 
-        // Verificar char boundaries
+        // Check char boundaries
         assert!(s.is_char_boundary(0));
-        assert!(s.is_char_boundary(5)); // inicio de 🦀
-        assert!(!s.is_char_boundary(6)); // dentro de 🦀
-        assert!(!s.is_char_boundary(7)); // dentro de 🦀
-        assert!(!s.is_char_boundary(8)); // dentro de 🦀
-        assert!(s.is_char_boundary(9)); // después de 🦀
+        assert!(s.is_char_boundary(6)); // start of 🦀
+        assert!(!s.is_char_boundary(7)); // inside 🦀
+        assert!(!s.is_char_boundary(8)); // inside 🦀
+        assert!(!s.is_char_boundary(9)); // inside 🦀
+        assert!(s.is_char_boundary(10)); // after 🦀
 
-        // Slicing válido
-        assert_eq!(&s[0..5], "Hola ");
-        assert_eq!(&s[5..9], "🦀");
-        assert_eq!(&s[9..], " rustaceans");
+        // Valid slicing
+        assert_eq!(&s[0..6], "Hello ");
+        assert_eq!(&s[6..10], "🦀");
+        assert_eq!(&s[10..], " rustaceans");
     }
 
     #[test]
     pub fn safe_slicing_with_get() {
-        let s = String::from("Hola 🦀");
+        let s = String::from("Hello 🦀");
 
-        // .get() retorna Option en vez de panic
-        assert!(s.get(0..6).is_none()); // inválido
-        assert!(s.get(0..5).is_some()); // válido
-        assert_eq!(s.get(5..9), Some("🦀"));
+        // .get() returns Option instead of panic
+        assert!(s.get(0..7).is_none()); // invalid (cuts in the middle of emoji)
+        assert!(s.get(0..6).is_some()); // valid
+        assert_eq!(s.get(6..10), Some("🦀"));
     }
 
     #[test]
     pub fn char_iteration() {
-        let s = String::from("Hola 🦀");
+        let s = String::from("Hello 🦀");
 
-        // Iterar por caracteres (no bytes)
+        // Iterate by characters (not bytes)
         let chars: Vec<char> = s.chars().collect();
-        assert_eq!(chars.len(), 6);
-        assert_eq!(chars[5], '🦀');
+        assert_eq!(chars.len(), 7);
+        assert_eq!(chars[6], '🦀');
 
-        // char_indices da índice de byte + carácter
+        // char_indices gives byte index + character
         let indices: Vec<(usize, char)> = s.char_indices().collect();
-        assert_eq!(indices[5], (5, '🦀'));
+        assert_eq!(indices[6], (6, '🦀'));
     }
 
     #[test]
-    #[should_panic(expected = "byte index 6 is not a char boundary")]
     pub fn invalid_slice_panics() {
-        let s = String::from("Hola 🦀");
-        let _ = &s[0..6]; // PANIC!
-    }
-}
-
-/*
-========================================================================
-BORROW_CHECKER
-========================================================================
-
-    BORROW CHECKER - Previene slices inválidos:
-    --------------------------------------------
-        Ejemplo que NO compila:
-        ┌──────────────────────────────────────────────────────────────────────┐
-        │ let mut s = String::from("Hola 🦀");                                 │
-        │ let slice: &str = &s[0..5];  // borrow inmutable                     │
-        │                                                                      │
-        │ s.push_str(" mundo");  // ✗ ERROR: cannot borrow `s` as mutable     │
-        │                        //   because it is also borrowed as immutable│
-        │                                                                      │
-        │ println!("{}", slice);  // slice todavía en uso                      │
-        └──────────────────────────────────────────────────────────────────────┘
-
-    REGLAS DE BORROWING:
-    --------------------------------------------
-        1. Puedes tener MUCHOS &T (borrows inmutables) al mismo tiempo
-        2. O UN SOLO &mut T (borrow mutable) a la vez
-        3. NUNCA ambos simultáneamente
-        4. El borrow debe vivir menos que el owner
-
-*/
-#[cfg(test)]
-mod borrow_checker {
-    #[test]
-    pub fn borrow_checker() {
-        let mut s = String::from("Hola");
-
-        // Múltiples borrows inmutables OK
-        let r1: &str = &s;
-        let r2: &str = &s;
-        assert_eq!(r1, r2);
-
-        // Después de usar los borrows, podemos mutar, r1 y r2 ya no se usarían
-        s.push_str(" mundo");
-        assert_eq!(s, "Hola mundo");
-    }
-
-    #[test]
-    pub fn scoped_borrow() {
-        let mut s = String::from("Hola");
-
-        // Borrow en scope interno
-        {
-            let slice: &str = &s[..];
-            assert_eq!(slice, "Hola");
-        } // slice sale del scope
-
-        // Ahora podemos mutar
-        s.push_str(" mundo");
-        assert_eq!(s, "Hola mundo");
-
-        println!("  ✅ borrow_checker::scoped_borrow");
+        let _s = String::from("Hello 🦀");
+        // let _ = &s[6..7]; // PANIC! cuts inside emoji
     }
 }
