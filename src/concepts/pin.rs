@@ -399,9 +399,12 @@ mod pin_stack_and_heap {
             let var = var2.as_mut().get_unchecked_mut();
             var.ptr = &var.value as *const i32;
         }
-        // var2.ptr = &var2.value as *const i32; // impossible in !unpin because there's no deref for unpin
+        // var2.ptr = &var2.value as *const i32; // impossible in !unpin because there's 
+        // no deref for unpin
 
-        // the only way to access !pin content is using get_unchecked_mut or get_unchecked_ref inside an unsafe block, because deref is not implemented for !Unpin, therefore content cannot be modified directly.
+        // the only way to access !pin content is using get_unchecked_mut or get_unchecked_ref 
+        // inside an unsafe block, because deref is not implemented for !Unpin, 
+        // therefore content cannot be modified directly.
         // replace(
         //     &mut *var2,  // error: no deref implementation in !Unpin
         //     NoMovable {

@@ -119,7 +119,8 @@ mod benchmarks {
             let _ = black_box(process_point_by_value(black_box(*p)));
         }
         let duration_value_point = start.elapsed();
-        let ratio_point = duration_value_point.as_nanos() as f64 / duration_ref_point.as_nanos().max(1) as f64;
+        let ratio_point = duration_value_point.as_nanos() as f64 / 
+           duration_ref_point.as_nanos().max(1) as f64;
 
         println!("    By reference: {:?}", duration_ref_point);
         println!("    By value (copy): {:?}", duration_value_point);

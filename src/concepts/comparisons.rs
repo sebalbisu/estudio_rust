@@ -344,7 +344,8 @@ mod primitive_types {
     char    → Compares by Unicode value
         '😀' = U+1F600 = 128512 (decimal)
         'a'  = U+0061  = 97 (decimal)
-    String  → &str,  compares as if they were multiple chars, Lexicographic by Unicode code value
+    String  → &str,  compares as if they were multiple chars, 
+        Lexicographic by Unicode code value
         '😀' = U+1F600 = 128512 (decimal)
         'a'  = U+0061  = 97 (decimal)
     */
@@ -438,7 +439,8 @@ NaN (Not a Number) IN FLOATS
 1. WHEN NaN APPEARS
 ─────────────────────────────────────────────────────────────────────────────
 
-    NaN is the solution to the problem of representing a value that is an indeterminate number. for example 0.0 / 0.0
+    NaN is the solution to the problem of representing a value that is an 
+    indeterminate number. for example 0.0 / 0.0
 
     * Hardware natively supports it
     * This allows the calculation to continue without panicking (fault tolerance)
@@ -699,7 +701,8 @@ mod collections {
 // ENUMS
 // ═════════════════════════════════════════════════════════════════════════════
 /*
- Enums are ordered according to the order of definition of their variants and not by their associated content.
+ Enums are ordered according to the order of definition of their variants and 
+ not by their associated content.
 
 */
 #[cfg(test)]

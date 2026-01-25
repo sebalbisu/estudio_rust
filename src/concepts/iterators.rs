@@ -284,7 +284,8 @@ mod custom_iterators {
 
         fn next(&mut self) -> Option<Self::Item> {
             if !self.items.is_empty() {
-                // advanced trick: to take mutable references when &mut self already has one, we use std::mem::take
+                // advanced trick: to take mutable references when &mut self 
+                // already has one, we use std::mem::take
                 let items = std::mem::take(&mut self.items);
                 let (first, rest) = items.split_first_mut()?;
                 self.items = rest;
@@ -604,7 +605,10 @@ mod adapters {
         assert_eq!(doubled, vec![2, 4, 6]);
 
         // map() can be chained
-        let result: Vec<_> = numbers.iter().map(|&x| x * 2).map(|x| x + 1).collect();
+        let result: Vec<_> = numbers.iter()
+            .map(|&x| x * 2)
+            .map(|x| x + 1)
+            .collect();
         assert_eq!(result, vec![3, 5, 7]);
     }
 

@@ -550,7 +550,8 @@ mod static_lifetime {
             * 'static references
         It's accessible according to its visibility and location.
             * If defined at module level, it's global.
-            * If inside a function, it's local to that function, but persists between calls. Can also be returned as a 'static reference from the function.
+            * If inside a function, it's local to that function, but persists between calls. 
+            Can also be returned as a 'static reference from the function.
         If it's static mut:
             * unsafe: Requires unsafe to read or write, other threads have access to the variable.
             * +Sync if used with Mutex/RwLock/... for threads
@@ -774,7 +775,8 @@ FOR<'a>
 ========================================
     for<'a> = "For every lifetime 'a"
 
-    A way to indicate that a lifetime can be any, it's independent, not added to the signature T<'a>
+    A way to indicate that a lifetime can be any, it's independent, not added to 
+    the signature T<'a>
 
     Used in:
         * Bounds in closures as parameters (mostly)
