@@ -404,7 +404,8 @@ Characteristics:
 */
 #[cfg(test)]
 pub mod local_set {
-    use tokio::task::LocalSet;
+    use proptest::strategy::LazyJust;
+use tokio::task::LocalSet;
 
     /*
     # run_until:
@@ -546,7 +547,7 @@ pub mod join_set {
     Running multithread in a set
  */
 #[cfg(test)]
-pub mod multi_thread {
+pub mod thread_set {
     use std::collections::HashSet;
     use std::thread::ThreadId;
     use tokio::task::{JoinSet, yield_now};
@@ -567,6 +568,33 @@ pub mod multi_thread {
         let threads_id_set: HashSet<ThreadId> = results.into_iter().collect();
         println!("threads_id_set: {:?}", threads_id_set);
         assert!(1 < threads_id_set.len() && threads_id_set.len() <= 4);
+    }
+}
+
+/*
+# thread_scope:
+=============================================================
+Creates a scope for spawning scoped threads.
+
+Unlike non-scoped threads, scoped threads can borrow non-'static data, as the scope guarantees all threads will be joined at the end of the scope.
+*/
+#[cfg(test)]
+mod thread_scope {
+    use std::thread;
+
+    #[test]
+    fn test() {
+        let v = vec![1, 2, 3];
+        thread::scope(|s| {
+            s.spawn(|| {
+                // safe access to the reference, because the scope guarantees all threads will be joined at the end of the scope.
+                println!("v: {:?}", v);
+            });
+            s.spawn(|| {
+                println!("v: {:?}", v);
+            });
+        }); // waits for all threads to finish
+        println!("v: {:?}", v);
     }
 }
 
