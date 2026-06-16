@@ -14,6 +14,7 @@ fn index() {
     conversion_propagation::demo_question_operator();
     this_error::this_error_demo();
     anyhow::anyhow_demo();
+    error_stack::error_stack_demo();
     backtrace::manual();
 }
 
@@ -282,6 +283,9 @@ mod box_dyn_error {
                     println!("     TryFromIntError: {}", try_from_err);
                 } else if let Some(utf8_err) = e.downcast_ref::<std::str::Utf8Error>() {
                     println!("     Utf8Error: {}", utf8_err);
+                // Otro error que implementa el trait Error de std (ejemplo: std::io::Error)
+                } else if let Some(io_err) = e.downcast_ref::<std::io::Error>() {
+                    println!("     IoError: {}", io_err);
                 } else {
                     println!("     Other error: {}", e);
                 }
@@ -478,13 +482,9 @@ mod anyhow {
                 Ok("8080")
             };
 
-            let contents =
-                contents.with_context(|| format!("Reading port file: {}", path))?;
+            let contents = contents.with_context(|| format!("Reading port file: {}", path))?;
 
-            let port: u16 = contents
-                .trim()
-                .parse()
-                .context("Parsing port as u16")?;
+            let port: u16 = contents.trim().parse().context("Parsing port as u16")?;
 
             if port == 0 {
                 bail!("Port cannot be 0");
@@ -526,7 +526,75 @@ mod anyhow {
 }
 
 // ============================================================================
-// 8. RUST_BACKTRACE
+// 8. ERROR-STACK
+// ============================================================================
+/*
+    ERROR-STACK: REPORT WITH TYPED CONTEXT AND FRAME STACK:
+    --------------------------------------------
+
+    * Report::new(E).attach("msg")  -> build error + context in one place
+    * change_context(E2)            -> push a new typed context on the stack
+    * report.frames()               -> walk the chain (contexts + attachments)
+    * report.contains::<T>()        -> check if type T appears anywhere in the stack
+    * report.current_context()      -> the active context type (Report<C> -> &C)
+*/
+#[cfg(test)]
+mod error_stack {
+    use error_stack::{AttachmentKind, FrameKind, Report};
+    use thiserror::Error as ThisError;
+
+    #[derive(ThisError, Debug, PartialEq, Eq)]
+    enum AppError {
+        #[error("not found")]
+        NotFound,
+        #[error("invalid")]
+        Invalid,
+    }
+
+    #[derive(ThisError, Debug)]
+    enum InnerError {
+        #[error("inner failure")]
+        Failed,
+    }
+
+    fn fail(kind: &str) -> Result<(), Report<AppError>> {
+        if kind == "ok" {
+            return Ok(());
+        }
+        if kind == "not_found" {
+            return Err(Report::new(AppError::NotFound).attach("id=42"));
+        }
+        if kind == "invalid" {
+            return Err(Report::new(AppError::Invalid).attach("bad field"));
+        }
+        Err(Report::new(InnerError::Failed)
+            .attach("step 1 failed")
+            .change_context(AppError::Invalid)
+            .attach("while validating"))
+    }
+
+    #[test]
+    pub fn error_stack_demo() {
+        for kind in ["ok", "not_found", "invalid", "chain"] {
+            match fail(kind) {
+                Ok(()) => println!("     [{kind}] ok"),
+                Err(report) => {
+                    // match error type
+                    let case = match report.current_context() {
+                        AppError::NotFound => "not_found",
+                        // If the report contains an InnerError in its chain
+                        AppError::Invalid if report.contains::<InnerError>() => "chain",
+                        AppError::Invalid => "invalid",
+                    };
+                    println!("[{kind}] case = {case}");
+                }
+            }
+        }
+    }
+}
+
+// ============================================================================
+// 9. RUST_BACKTRACE
 // ============================================================================
 /*
     WHEN IS A BACKTRACE CAPTURED?
