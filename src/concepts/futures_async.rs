@@ -16,8 +16,6 @@ fn index() {
     not_unpin_and_async::async_fn_no_move();
 }
 
-
-
 /*
 FUTURE TRAIT:
 ========================================================================
@@ -27,7 +25,7 @@ FUTURE TRAIT:
         A Future is a value that resolves at some point in the future.
 
         enum Poll<T> {  // Result of the poll method: Ready or Pending
-            Ready(T), 
+            Ready(T),
             Pending,
         }
 
@@ -39,7 +37,7 @@ FUTURE TRAIT:
         - &mut self:
             - exclusive access to the future, no other executor can poll it at the same time
             - mutable access, can change/update the state of the future
-        - pin: 
+        - pin:
             - prevents the future from being moved in memory without unsafe.
             - only in the poll method you will use unsafe access, but in the rest of the code
             it wont be allowed to access the fields without unsafe. Not moved by accident.
@@ -49,7 +47,7 @@ FUTURE TRAIT:
         States:
         --------------------------------------------------
         - Ready
-        - Pending: 
+        - Pending:
             Notifies the executor that it can be polled again,
             adds it to the wakers list to be polled again
             suspends and resumes when it can be polled again.
@@ -58,8 +56,8 @@ FUTURE TRAIT:
         Timers, IO, files, ... :
         --------------------------------------------------
             an integration with the async/await executor that
-            is responsible for notifying the waker of the completion/update of the 
-            asynchronous operation,  and resumes the future. It can notify status update 
+            is responsible for notifying the waker of the completion/update of the
+            asynchronous operation,  and resumes the future. It can notify status update
             of the asynchronous operation  or if it completed, then the poll decides
             if it is pending or ready.
 
@@ -72,7 +70,7 @@ FUTURE TRAIT:
         }
 
         impl Future for MyFuture {
-            
+
             type Output = i32;
 
             fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<i32> {
@@ -103,9 +101,13 @@ FUTURE TRAIT:
 #[cfg(test)]
 pub mod future_trait {
 
-    use std::{future::Future, pin::Pin, task::{Context, Poll, Waker}};
+    use std::{
+        future::Future,
+        pin::Pin,
+        task::{Context, Poll, Waker},
+    };
     struct NoOpWaker;
-    
+
     impl std::task::Wake for NoOpWaker {
         fn wake(self: std::sync::Arc<Self>) {
             // No-op waker for testing
@@ -133,19 +135,18 @@ pub mod future_trait {
      */
     #[test]
     pub fn manual_dispatch() {
-
         let mut future = ValueFuture { value: 0 };
         let mut future = Pin::new(&mut future);
-        
+
         let waker = Waker::from(std::sync::Arc::new(NoOpWaker));
         let mut cx = Context::from_waker(&waker);
-        
-        let result = future.as_mut().poll(&mut cx);   
+
+        let result = future.as_mut().poll(&mut cx);
         assert_eq!(result, Poll::Pending);
-        let result = future.as_mut().poll(&mut cx); 
+        let result = future.as_mut().poll(&mut cx);
         assert_eq!(result, Poll::Ready(1));
     }
-    
+
     /*
     Polling with tokio:
      */
@@ -153,10 +154,9 @@ pub mod future_trait {
     pub async fn tokio_dispatch() {
         let mut future = ValueFuture { value: 0 };
         let future_pinned = Pin::new(&mut future);
-        let result = future_pinned.await;    // tokio will poll
+        let result = future_pinned.await; // tokio will poll
         assert_eq!(result, 1);
     }
-
 }
 /*
 FUTURES IN STACK AND HEAP:
@@ -179,7 +179,7 @@ mod futures_in_stack_and_heap {
     pub fn futures_in_stack_and_heap() {
         let mut future = ValueFuture { value: 0 };
         let _future_pin: Pin<&mut ValueFuture> = Pin::new(&mut future); // stack
-        let _future_box_pin: Pin<Box<ValueFuture>> = Box::pin(future);           // heap
+        let _future_box_pin: Pin<Box<ValueFuture>> = Box::pin(future); // heap
     }
 }
 
@@ -192,14 +192,14 @@ PIN FUTURES:
     Structs futures and futures async/await can be self-referential, so they are !Unpin.
     The compiler adds PhantomPinned automatically when it detects this.
     when you pin the future, you protect it from being moved in memory without unsafe.
-    The idea is you use unsafe access in the poll method to access the fields, but in the 
-    rest of the code you can't access the fields without unsafe. So the future 
+    The idea is you use unsafe access in the poll method to access the fields, but in the
+    rest of the code you can't access the fields without unsafe. So the future
     will mantain the same memory address and the same fields.
 
     Pin Project:
     --------------------------------------------------
     An improved approach is to use pin_project macro to mark specific fields as pinned.
-    So you can access the fields without unsafe in the rest of the code. 
+    So you can access the fields without unsafe in the rest of the code.
     And use unsafe only in the poll method in the !unpin fields.
 */
 #[cfg(test)]
@@ -211,7 +211,7 @@ pub mod pin_futures {
     pub async fn pin_futures() {
         let mut future = ValueFuture { value: 0 };
         let future_pinned = Pin::new(&mut future); // Pin<&mut ValueFuture>
-        let result = future_pinned.await;   
+        let result = future_pinned.await;
         assert_eq!(result, 1);
     }
 }
@@ -271,7 +271,7 @@ ASYNC BLOCK:
                 State3,
                 State4,
             }
-            
+
             struct ExampleFuture<'a> {
                 state: State,
 
@@ -284,7 +284,7 @@ ASYNC BLOCK:
                     // advances to the next state
                 }
             }
-    
+
     ASYNC MOVE:
     --------------------------------------------------
         move ownership of the captured variables to the future
@@ -306,10 +306,10 @@ pub mod async_block {
         let x = String::from("hello");
         // let future: impl Future<Output = i32>
         let future = async move {
-            assert_eq!(x, String::from("hello"));    // captured variable
-            async {}.await;  // State 1
-            async {}.await;  // State 2
-            async {}.await;  // State 3
+            assert_eq!(x, String::from("hello")); // captured variable
+            async {}.await; // State 1
+            async {}.await; // State 2
+            async {}.await; // State 3
             123
         }; // State 4: completed (return value)
         let result = future.await;
@@ -320,9 +320,10 @@ pub mod async_block {
     pub async fn async_block_move() {
         let x = String::from("hello");
         async move {
-            assert_eq!(x, String::from("hello"));    // captured variable
-            async {}.await;  // State 1
-        }.await; // State 2: completed (return value)
+            assert_eq!(x, String::from("hello")); // captured variable
+            async {}.await; // State 1
+        }
+        .await; // State 2: completed (return value)
     }
 }
 
@@ -351,7 +352,7 @@ pub mod async_fn {
     #[tokio::test]
     pub async fn async_fn() {
         async fn demo() -> i32 {
-            async {}.await; 
+            async {}.await;
             123
         }
         let result = demo().await;
@@ -359,15 +360,13 @@ pub mod async_fn {
     }
 }
 
-
-
 /*
 ASYNC CLOSURES:
 ========================================================================
 
     // Similar to closures but returning a Future:
     ------------------------------------------------------------
-    
+
     // Regular function traits:
     fn call(&self) { }            // Fn
     fn call_mut(&mut self) { }    // FnMut
@@ -396,12 +395,13 @@ pub mod async_closures {
      */
     #[tokio::test]
     pub async fn async_fn() {
-        let closure_fn = async || { // impl AsyncFn() -> i32
+        let closure_fn = async || {
+            // impl AsyncFn() -> i32
             async {}.await;
             123
         };
         let future = closure_fn(); // impl Future<Output = i32>
-        let result: i32 = future.await; 
+        let result: i32 = future.await;
         assert_eq!(result, 123);
     }
 
@@ -410,48 +410,46 @@ pub mod async_closures {
      */
     #[tokio::test]
     pub async fn async_fn_mut() {
-
         let mut data = 10;
-    
+
         // ✅ AsyncFnMut - takes &mut self
         let mut async_mut_closure = async || {
-            data += 1;  // Mutable capture
+            data += 1; // Mutable capture
             async {}.await;
             data
         };
-        
+
         // First call: &mut self
-        let future1 = async_mut_closure();  // Returns impl Future
+        let future1 = async_mut_closure(); // Returns impl Future
         let result1 = future1.await;
         assert_eq!(result1, 11);
-        
+
         // Second call: &mut self (data was modified)
         let future2 = async_mut_closure();
         let result2 = future2.await;
-        assert_eq!(result2, 12);  // data incremented again
+        assert_eq!(result2, 12); // data incremented again
     }
 
     #[tokio::test]
     pub async fn async_fn_once() {
         let data = 10;
-        
+
         // ✅ AsyncFnOnce - takes self (consume)
         let async_once_closure = async move || {
-            let result = data + 1;  // Capture by value (move)
+            let result = data + 1; // Capture by value (move)
             async {}.await;
             result
         };
-        
+
         // First call - consumes the closure
-        let future = async_once_closure();  // Consumed here
+        let future = async_once_closure(); // Consumed here
         let result = future.await;
         assert_eq!(result, 11);
-        
+
         // ❌ Second call does NOT work - already consumed
         // let future2 = async_once_closure();  // Error: value used after move
     }
 }
-
 
 /*
 WHEN ASYNC IS !UNPIN:
@@ -468,7 +466,7 @@ WHEN ASYNC IS !UNPIN:
 
     When a future is created from an async block, the compiler creates an internal struct,
     and if it detects that it is !Unpin, it adds the phantompinned to mark it as !Unpin.
-    Then it is wrapped in a Pin to protect it from movements before calling poll 
+    Then it is wrapped in a Pin to protect it from movements before calling poll
     or in the suspended state.
 
 */
@@ -486,7 +484,7 @@ pub mod not_unpin_and_async {
     Auto ref after await: !unpin
     */
     #[tokio::test]
-    pub async fn auto_ref_after_await(){
+    pub async fn auto_ref_after_await() {
         fn fn_future() -> impl Future<Output = ()> {
             async {
                 let data = 10;
@@ -504,7 +502,6 @@ pub mod not_unpin_and_async {
      */
     #[tokio::test]
     pub async fn auto_ref_before_await() {
-        
         fn fn_future() -> impl Future<Output = ()> {
             async {
                 let data = 10;
@@ -537,6 +534,6 @@ pub mod not_unpin_and_async {
     async fn are async blocks without move
      */
     #[tokio::test]
-    pub async fn async_fn_no_move() { /* */  }
-    
+    pub async fn async_fn_no_move() { /* */
+    }
 }
